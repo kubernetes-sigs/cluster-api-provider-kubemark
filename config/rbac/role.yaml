@@ -15,6 +15,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - kubeadmconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - cluster.x-k8s.io
   resources:
   - clusters
@@ -31,6 +39,8 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - infrastructure.cluster.x-k8s.io

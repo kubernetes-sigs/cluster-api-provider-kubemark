@@ -10,7 +10,8 @@
       "cmd",
       "controllers",
       "pkg",
-      "exp"
+      "exp",
+      "util"
     ]
   }
 }

@@ -34,8 +34,9 @@ type KubemarkMachineSpec struct {
 
 // KubemarkMachineStatus defines the observed state of KubemarkMachine
 type KubemarkMachineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Ready is true when the provider resource is ready.
+	// +optional
+	Ready bool `json:"ready"`
 }
 
 // +kubebuilder:subresource:status

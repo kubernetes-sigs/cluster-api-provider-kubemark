@@ -23,7 +23,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/klog"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha3"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -38,10 +40,12 @@ var (
 )
 
 func init() {
+	klog.InitFlags(nil)
 	_ = clientgoscheme.AddToScheme(scheme)
 
 	_ = infrastructurev1alpha3.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
+	_ = bootstrapv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
