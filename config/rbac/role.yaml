@@ -9,6 +9,20 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+- apiGroups:
+  - ""
+  resources:
   - secrets
   verbs:
   - get
@@ -58,26 +72,6 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - kubemarkmachines/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
-  - kubemarkmachinetemplates
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
-  - kubemarkmachinetemplates/status
   verbs:
   - get
   - patch

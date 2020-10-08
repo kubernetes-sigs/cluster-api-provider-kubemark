@@ -20,8 +20,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+const (
+	// MachineFinalizer allows the controller to clean up resources associated with KubemarkMachine before
+	// removing it from the apiserver.
+	MachineFinalizer = "kubemarkmachine.infrastructure.cluster.x-k8s.io"
+)
 
 // KubemarkMachineSpec defines the desired state of KubemarkMachine
 type KubemarkMachineSpec struct {

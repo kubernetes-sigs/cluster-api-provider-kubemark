@@ -48,8 +48,10 @@ import (
 	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -78,6 +80,8 @@ type KubemarkMachineReconciler struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=create;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete
 
 func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -92,36 +96,52 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Error(err, "error finding kubemark machine")
 		return ctrl.Result{}, err
 	}
+	helper, err := patch.NewHelper(kubemarkMachine, r)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
+	}
+
+	controllerutil.AddFinalizer(kubemarkMachine, infrav1.MachineFinalizer)
+	if err := helper.Patch(context.TODO(), kubemarkMachine); err != nil {
+		logger.Error(err, "failed to add finalizer")
+		return ctrl.Result{}, err
+	}
+
+	defer func() {
+		if err := helper.Patch(context.TODO(), kubemarkMachine); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "failed to patch kubemarkMachine")
+			}
+		}
+	}()
 
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
-		logger.Info("deleting")
-		machine, err := util.GetOwnerMachine(ctx, r, kubemarkMachine.ObjectMeta)
-		if err != nil {
-			logger.Error(err, "error finding owner machine")
-			return ctrl.Result{}, err
-		}
-		cluster, err := util.GetClusterFromMetadata(ctx, r, machine.ObjectMeta)
-		if err != nil {
-			logger.Info("Machine is missing cluster label or cluster does not exist")
-			return ctrl.Result{}, nil
-		}
+		logger.Info("deleting machine")
 
-		_, workloadClient, err := getRemoteCluster(ctx, logger, r, cluster)
-		if err != nil {
-			logger.Error(err, "error getting remote cluster")
-			return ctrl.Result{}, err
-		}
-
-		workloadClient.Delete(context.TODO(), &v1.Pod{
+		if err := r.Delete(context.TODO(), &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: "kube-system",
-			}})
-		workloadClient.Delete(context.TODO(), &v1.ConfigMap{
+				Namespace: kubemarkMachine.Namespace,
+			},
+		}); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "error deleting kubemark pod")
+				return ctrl.Result{}, err
+			}
+		}
+		if err := r.Delete(context.TODO(), &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: "kube-system",
-			}})
+				Namespace: kubemarkMachine.Namespace,
+			},
+		}); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "error deleting kubemark configMap")
+				return ctrl.Result{}, err
+			}
+		}
+		controllerutil.RemoveFinalizer(kubemarkMachine, infrav1.MachineFinalizer)
+		return ctrl.Result{}, nil
 	}
 
 	if kubemarkMachine.Status.Ready {
@@ -139,6 +159,17 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Info("Machine Controller has not yet set OwnerRef")
 		return ctrl.Result{}, nil
 	}
+	machinePatchHelper, err := patch.NewHelper(machine, r)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
+	}
+	defer func() {
+		if err := machinePatchHelper.Patch(context.TODO(), machine); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "failed to patch machine")
+			}
+		}
+	}()
 
 	logger = logger.WithValues("machine", machine.Name)
 
@@ -148,8 +179,9 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Info("Machine is missing cluster label or cluster does not exist")
 		return ctrl.Result{}, nil
 	}
+	logger = logger.WithValues("cluster", cluster.Name)
 
-	restConfig, workloadClient, err := getRemoteCluster(ctx, logger, r, cluster)
+	restConfig, _, err := getRemoteCluster(ctx, logger, r, cluster)
 	if err != nil {
 		logger.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
@@ -262,15 +294,15 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubemarkMachine.ObjectMeta.Name,
-			Namespace: "kube-system",
+			Name:      kubemarkMachine.Name,
+			Namespace: kubemarkMachine.Namespace,
 		},
 		Data: map[string]string{
 			"kubeconfig": string(kubeconfig),
 			"cert.pem":   string(stackedCert.Bytes()),
 		},
 	}
-	if err := workloadClient.Create(context.TODO(), configMap); err != nil {
+	if err := r.Create(context.TODO(), configMap); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create configmap")
 			return ctrl.Result{}, err
@@ -281,7 +313,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Labels:    map[string]string{"app": kubemarkName},
-			Namespace: "kube-system",
+			Namespace: kubemarkMachine.Namespace,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -293,7 +325,6 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 						"--morph=kubelet",
 						"--log-file=/var/log/kubelet.log",
 						"--logtostderr=false",
-						"--register-with-taints=kubemark=true:NoSchedule",
 						fmt.Sprintf("--name=%s", kubemarkMachine.Name),
 					},
 					Command: []string{"/kubemark"},
@@ -333,7 +364,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		},
 	}
 
-	if err = workloadClient.Create(context.TODO(), pod); err != nil {
+	if err = r.Create(context.TODO(), pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
@@ -341,16 +372,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 
 	machine.Spec.ProviderID = pointer.StringPtr(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
-	if err := r.Update(context.TODO(), machine); err != nil {
-		logger.Error(err, "failed to update machine")
-		return ctrl.Result{}, err
-	}
-
 	kubemarkMachine.Status.Ready = true
-	if err := r.Status().Update(context.TODO(), kubemarkMachine); err != nil {
-		logger.Error(err, "failed to update KubemarkMachine")
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -361,7 +383,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
 			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("AWSMachine")),
+				ToRequests: util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine")),
 			},
 		).
 		Complete(r)
