@@ -27,10 +27,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	certificates "k8s.io/api/certificates/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -93,6 +93,42 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		return ctrl.Result{}, err
 	}
 
+	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
+		logger.Info("deleting")
+		machine, err := util.GetOwnerMachine(ctx, r, kubemarkMachine.ObjectMeta)
+		if err != nil {
+			logger.Error(err, "error finding owner machine")
+			return ctrl.Result{}, err
+		}
+		cluster, err := util.GetClusterFromMetadata(ctx, r, machine.ObjectMeta)
+		if err != nil {
+			logger.Info("Machine is missing cluster label or cluster does not exist")
+			return ctrl.Result{}, nil
+		}
+
+		_, workloadClient, err := getRemoteCluster(ctx, logger, r, cluster)
+		if err != nil {
+			logger.Error(err, "error getting remote cluster")
+			return ctrl.Result{}, err
+		}
+
+		workloadClient.Delete(context.TODO(), &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      kubemarkMachine.Name,
+				Namespace: "kube-system",
+			}})
+		workloadClient.Delete(context.TODO(), &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      kubemarkMachine.Name,
+				Namespace: "kube-system",
+			}})
+	}
+
+	if kubemarkMachine.Status.Ready {
+		logger.Info("machine already ready, skipping reconcile")
+		return ctrl.Result{}, err
+	}
+
 	// Fetch the Machine.
 	machine, err := util.GetOwnerMachine(ctx, r, kubemarkMachine.ObjectMeta)
 	if err != nil {
@@ -112,16 +148,10 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Info("Machine is missing cluster label or cluster does not exist")
 		return ctrl.Result{}, nil
 	}
-	restConfig, err := remote.RESTConfig(ctx, r.Client, util.ObjectKey(cluster))
-	if err != nil {
-		logger.Error(err, "error getting restconfig")
-		return ctrl.Result{}, err
-	}
-	restConfig.Timeout = 30 * time.Second
 
-	c, err := client.New(restConfig, client.Options{Scheme: scheme.Scheme})
+	restConfig, workloadClient, err := getRemoteCluster(ctx, logger, r, cluster)
 	if err != nil {
-		logger.Error(err, "error creating client")
+		logger.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
 	}
 
@@ -240,71 +270,62 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			"cert.pem":   string(stackedCert.Bytes()),
 		},
 	}
-	if err := c.Create(context.TODO(), configMap); err != nil {
+	if err := workloadClient.Create(context.TODO(), configMap); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create configmap")
 			return ctrl.Result{}, err
 		}
 	}
 
-	deployment := &appsv1.Deployment{
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Labels:    map[string]string{"app": kubemarkName},
 			Namespace: "kube-system",
 		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": kubemarkName,
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:  kubemarkName,
+					Image: "gcr.io/cf-london-servces-k8s/bmo/kubemark@sha256:9f717e0f2fc1b00c72719f157c1a3846ab8180070c201b950cade504c12dec59",
+					Args: []string{
+						"--v=3",
+						"--morph=kubelet",
+						"--log-file=/var/log/kubelet.log",
+						"--logtostderr=false",
+						"--register-with-taints=kubemark=true:NoSchedule",
+						fmt.Sprintf("--name=%s", kubemarkMachine.Name),
+					},
+					Command: []string{"/kubemark"},
+					SecurityContext: &v1.SecurityContext{
+						Privileged: pointer.BoolPtr(true),
+					},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							MountPath: "/kubeconfig",
+							Name:      "kubeconfig",
+						},
+					},
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse("40m"),
+							v1.ResourceMemory: resource.MustParse("10240Ki"),
+						},
+					},
 				},
 			},
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": kubemarkName,
-					},
+			Tolerations: []v1.Toleration{
+				{
+					Key:    "node-role.kubernetes.io/master",
+					Effect: v1.TaintEffectNoSchedule,
 				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Name:  kubemarkName,
-							Image: "gcr.io/cf-london-servces-k8s/bmo/kubemark@sha256:9f717e0f2fc1b00c72719f157c1a3846ab8180070c201b950cade504c12dec59",
-							Args: []string{
-								"--v=3",
-								"--morph=kubelet",
-								"--log-file=/var/log/kubelet.log",
-								"--logtostderr=false",
-								"--register-with-taints=kubemark=true:NoSchedule",
-								fmt.Sprintf("--name=%s", kubemarkMachine.Name),
-							},
-							Command: []string{"/kubemark"},
-							SecurityContext: &v1.SecurityContext{
-								Privileged: pointer.BoolPtr(true),
-							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									MountPath: "/kubeconfig",
-									Name:      "kubeconfig",
-								},
-							},
-						},
-					},
-					Tolerations: []v1.Toleration{
-						{
-							Key:    "node-role.kubernetes.io/master",
-							Effect: v1.TaintEffectNoSchedule,
-						},
-					},
-					Volumes: []v1.Volume{
-						{
-							Name: "kubeconfig",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{Name: configMap.Name},
-								},
-							},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "kubeconfig",
+					VolumeSource: v1.VolumeSource{
+						ConfigMap: &v1.ConfigMapVolumeSource{
+							LocalObjectReference: v1.LocalObjectReference{Name: configMap.Name},
 						},
 					},
 				},
@@ -312,9 +333,9 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		},
 	}
 
-	if err = c.Create(context.TODO(), deployment); err != nil {
+	if err = workloadClient.Create(context.TODO(), pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			logger.Error(err, "failed to create deployment")
+			logger.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
 		}
 	}
@@ -326,7 +347,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 
 	kubemarkMachine.Status.Ready = true
-	if err := r.Update(context.TODO(), kubemarkMachine); err != nil {
+	if err := r.Status().Update(context.TODO(), kubemarkMachine); err != nil {
 		logger.Error(err, "failed to update KubemarkMachine")
 		return ctrl.Result{}, err
 	}
@@ -378,4 +399,20 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 
 	// Marshal to disk
 	return runtime.Encode(clientcmdlatest.Codec, kubeconfigData)
+}
+
+func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client.Client, cluster *clusterv1.Cluster) (*restclient.Config, client.Client, error) {
+	restConfig, err := remote.RESTConfig(ctx, mgmtClient, util.ObjectKey(cluster))
+	if err != nil {
+		logger.Error(err, "error getting restconfig")
+		return nil, nil, err
+	}
+	restConfig.Timeout = 30 * time.Second
+
+	c, err := client.New(restConfig, client.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		logger.Error(err, "error creating client")
+		return nil, nil, err
+	}
+	return restConfig, c, err
 }
