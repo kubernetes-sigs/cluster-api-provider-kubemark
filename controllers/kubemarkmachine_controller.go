@@ -222,10 +222,6 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	certificateStore := &capkcert.MemoryStore{}
 
 	newClientFn := func(current *tls.Certificate) (certificatesclient.CertificateSigningRequestInterface, error) {
-		// If we have a valid certificate, use that to fetch CSRs. Otherwise use the bootstrap
-		// credentials. In the future it would be desirable to change the behavior of bootstrap
-		// to always fall back to the external bootstrap credentials when such credentials are
-		// provided by a fundamental trust system like cloud VM identity or an HSM module.
 		client, err := clientset.NewForConfig(restConfig)
 		if err != nil {
 			logger.Error(err, "error creating clientset")
