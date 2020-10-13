@@ -78,3 +78,59 @@ CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+## --------------------------------------
+## Release
+## --------------------------------------
+PROD_REGISTRY := gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark
+IMAGE_NAME ?= cluster-api-aws-controller
+
+ROOT_DIR_RELATIVE := .
+
+include $(ROOT_DIR_RELATIVE)/common.mk
+
+TOOLS_DIR := hack/tools
+TOOLS_DIR_DEPS := $(TOOLS_DIR)/go.sum $(TOOLS_DIR)/go.mod $(TOOLS_DIR)/Makefile
+TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
+KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
+
+PATH := $(abspath $(TOOLS_BIN_DIR)):$(PATH)
+
+export PATH
+
+RELEASE_DIR := out
+
+$(RELEASE_DIR):
+	mkdir -p $@
+
+.PHONY: release
+release: clean-release  ## Builds and push container images using the latest git tag for the commit.
+	@if [ -z "${RELEASE_TAG}" ]; then echo "RELEASE_TAG is not set"; exit 1; fi
+	@if ! [ -z "$$(git status --porcelain)" ]; then echo "Your local git repository contains uncommitted changes, use git clean before proceeding."; exit 1; fi
+	git checkout "${RELEASE_TAG}"
+	# Set the manifest image to the production bucket.
+	$(MAKE) set-manifest-image \
+		MANIFEST_IMG=$(PROD_REGISTRY)/$(IMAGE_NAME) MANIFEST_TAG=$(RELEASE_TAG) \
+		TARGET_RESOURCE="./config/manager/manager_image_patch.yaml" # Set manifest image for EKS bootstrap provider to the production bucket.
+	$(MAKE) set-manifest-pull-policy PULL_POLICY=IfNotPresent TARGET_RESOURCE="./config/manager/manager_pull_policy.yaml"
+	$(MAKE) release-manifests
+	$(MAKE) release-templates
+	# Add metadata to the release artifacts
+	cp metadata.yaml $(RELEASE_DIR)/metadata.yaml
+
+.PHONY: release-manifests
+release-manifests: $(RELEASE_DIR) $(KUSTOMIZE) ## Builds the manifests to publish with a release
+	$(KUSTOMIZE) build config > $(RELEASE_DIR)/infrastructure-components.yaml
+
+.PHONY: set-manifest-image
+set-manifest-image:
+	$(info Updating kustomize image patch file for manager resource)
+	sed -i'' -e 's@image: .*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' $(TARGET_RESOURCE)
+
+.PHONY: release-templates
+release-templates: $(RELEASE_DIR)
+	cp templates/machinedeployment-template.yaml $(RELEASE_DIR)/machinedeployment-template.yaml
+
+.PHONY: clean-release
+clean-release: ## Remove the release folder
+	rm -rf $(RELEASE_DIR)
