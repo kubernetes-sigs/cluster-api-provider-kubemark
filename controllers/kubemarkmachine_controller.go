@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"time"
 
@@ -295,7 +296,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		},
 		Data: map[string]string{
 			"kubeconfig": string(kubeconfig),
-			"cert.pem":   string(stackedCert.Bytes()),
+			"cert.pem":   stackedCert.String(),
 		},
 	}
 	if err := r.Create(context.TODO(), configMap); err != nil {
@@ -303,6 +304,10 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			logger.Error(err, "failed to create configmap")
 			return ctrl.Result{}, err
 		}
+	}
+	version := machine.Spec.Version
+	if version == nil {
+		return ctrl.Result{}, errors.New("Machine has no spec.version")
 	}
 
 	pod := &v1.Pod{
@@ -315,7 +320,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			Containers: []v1.Container{
 				{
 					Name:  kubemarkName,
-					Image: "gcr.io/cf-london-servces-k8s/bmo/kubemark@sha256:9f717e0f2fc1b00c72719f157c1a3846ab8180070c201b950cade504c12dec59",
+					Image: fmt.Sprintf("gcr.io/cf-london-servces-k8s/bmo/kubemark:%s", *version),
 					Args: []string{
 						"--v=3",
 						"--morph=kubelet",

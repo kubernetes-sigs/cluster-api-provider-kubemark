@@ -39,6 +39,27 @@ repo and use the [CAPI tilt guide][capi_tilt] to get Tilt setup. Add `kubemark`
 to the list of providers in your `tilt-settings.json` file and you should be
 off to the races.
 
+Once deployed, you can use `clusterctl` from the quick-start guide to create a cluster with only control-plane machines, something like:
+
+```
+export CLUSTER_NAME=kubemark
+export KUBERNETES_VERSION=v1.19.1
+clusterctl config cluster $CLUSTER_NAME --kubernetes-version $KUBERNETES_VERSION --control-plane-machine-count=1 --worker-machine-count=0 | kubectl apply -f-
+```
+
+Then we can add a Kubemark MachineDeployment to the cluster like so:
+
+```
+envsubst < ./sample-machinedeployment.yaml | kubectl apply -f-
+```
+
+This MachineDeployment will come with 0 replicas, so you can scale up to your heart's content with:
+
+```
+kubectl scale machinedeployments $CLUSTER_NAME-kubemark-md-0 --replicas 20
+```
+
+
 <!-- References -->
 
 [capd]: https://github.com/kubernetes-sigs/cluster-api/tree/master/test/infrastructure/docker
