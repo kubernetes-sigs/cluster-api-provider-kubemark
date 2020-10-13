@@ -3,9 +3,7 @@ module github.com/benmoss/cluster-api-provider-kubemark
 go 1.13
 
 require (
-	github.com/Masterminds/semver v1.5.0
 	github.com/go-logr/logr v0.1.0
-	github.com/google/go-containerregistry v0.1.2
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1
