@@ -34,31 +34,43 @@ pretend to run pods scheduled to them. For more information on Kubemark, the
 
 ## Getting started
 At this point the Kubemark provider is extremely alpha. To deploy the Kubemark
-provider, the recommended way at this time is using [Tilt][tilt]. Clone this
-repo and use the [CAPI tilt guide][capi_tilt] to get Tilt setup. Add `kubemark`
-to the list of providers in your `tilt-settings.json` file and you should be
-off to the races.
+provider, you can add the latest release to your clusterctl config file, by
+default located at `~/.cluster-api/clusterctl.yaml`.
 
-Once deployed, you can use `clusterctl` from the quick-start guide to create a cluster with only control-plane machines, something like:
-
+```yaml
+providers:
+- name: "kubemark"
+  url: "https://github.com/benmoss/cluster-api-provider-kubemark/releases/latest/infrastructure-components.yaml"
+  type: "InfrastructureProvider"
 ```
-export CLUSTER_NAME=kubemark
-export KUBERNETES_VERSION=v1.19.1
-clusterctl config cluster $CLUSTER_NAME --kubernetes-version $KUBERNETES_VERSION --control-plane-machine-count=1 --worker-machine-count=0 | kubectl apply -f-
+
+You can initialize this provider into your cluster by running:
+
+```bash
+clusterctl init --infrastructure kubemark
+```
+
+Once initialized, you'll need to deploy your workload cluster with a
+non-Kubemark provider first, just to create the control plane:
+
+```bash
+CLUSTER_NAME=kubemark
+KUBERNETES_VERSION=v1.19.1
+INFRA=docker
+clusterctl config cluster $CLUSTER_NAME --infrastructure $INFRA --kubernetes-version $KUBERNETES_VERSION --control-plane-machine-count=1 --worker-machine-count=0 | kubectl apply -f-
 ```
 
 Then we can add a Kubemark MachineDeployment to the cluster like so:
 
-```
-envsubst < ./sample-machinedeployment.yaml | kubectl apply -f-
-```
-
-This MachineDeployment will come with 0 replicas, so you can scale up to your heart's content with:
-
-```
-kubectl scale machinedeployments $CLUSTER_NAME-kubemark-md-0 --replicas 20
+```bash
+clusterctl config cluster $CLUSTER_NAME --kubernetes-version $KUBERNETES_VERSION --worker-machine-count=1 --from ./templates/cluster-template.yaml | kubectl apply -f-
 ```
 
+## Using tilt
+To deploy the Kubemark provider, the recommended way at this time is using
+[Tilt][tilt]. Clone this repo and use the [CAPI tilt guide][capi_tilt] to get
+Tilt setup. Add `kubemark` to the list of providers in your
+`tilt-settings.json` file and you should be off to the races.
 
 <!-- References -->
 
