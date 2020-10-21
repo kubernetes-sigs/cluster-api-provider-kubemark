@@ -140,6 +140,7 @@ set-manifest-image:
 .PHONY: release-templates
 release-templates: $(RELEASE_DIR)
 	cp templates/cluster-template.yaml $(RELEASE_DIR)/cluster-template.yaml
+	cp templates/cluster-template-capd.yaml $(RELEASE_DIR)/cluster-template-capd.yaml
 
 .PHONY: clean-release
 clean-release: ## Remove the release folder
