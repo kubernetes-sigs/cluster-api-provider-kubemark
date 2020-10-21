@@ -44,26 +44,31 @@ providers:
   type: "InfrastructureProvider"
 ```
 
-You can initialize this provider into your cluster by running:
+For demonstration purposes, we'll use the [CAPD][capd] provider. Other
+providers will also work, but CAPD is supported with a custom
+[template](templates/cluster-template-capd.yaml) that makes deployment super
+simple.
+
+Initialize this provider into your cluster by running:
 
 ```bash
-clusterctl init --infrastructure kubemark
+clusterctl init --infrastructure kubemark,capd
 ```
 
-Once initialized, you'll need to deploy your workload cluster with a
-non-Kubemark provider first, just to create the control plane:
+Once initialized, you'll need to deploy your workload cluster using the `capd`
+flavor to get a hybrid CAPD/CAPK cluster:
 
 ```bash
-CLUSTER_NAME=kubemark
-KUBERNETES_VERSION=v1.19.1
-INFRA=docker
-clusterctl config cluster $CLUSTER_NAME --infrastructure $INFRA --kubernetes-version $KUBERNETES_VERSION --control-plane-machine-count=1 --worker-machine-count=0 | kubectl apply -f-
+clusterctl config cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.19.1 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
-Then we can add a Kubemark MachineDeployment to the cluster like so:
+You should see your cluster come up and quickly become available with 4 Kubemark machines connected to your CAPD control plane.
+
+For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl config cluster $CLUSTER_NAME --kubernetes-version $KUBERNETES_VERSION --worker-machine-count=1 --from ./templates/cluster-template.yaml | kubectl apply -f-
+clusterctl config cluster wow --infrastructure aws      --kubernetes-version 1.19.1 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl config cluster wow --infrastructure kubemark --kubernetes-version 1.19.1 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
