@@ -19,45 +19,46 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	cryptorand "crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
+	infrav1 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha4"
 	"github.com/go-logr/logr"
-	certificates "k8s.io/api/certificates/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/client-go/util/cert"
-	"k8s.io/client-go/util/certificate"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/certs"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
+	"sigs.k8s.io/cluster-api/util/secret"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+)
 
-	infrav1 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha4"
-	capkcert "github.com/benmoss/cluster-api-provider-kubemark/util/certificate"
+const (
+	kubemarkName = "hollow-node"
 )
 
 // KubemarkMachineReconciler reconciles a KubemarkMachine object
@@ -174,7 +175,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	logger = logger.WithValues("cluster", cluster.Name)
 
-	restConfig, _, err := getRemoteCluster(ctx, logger, r.Client, cluster)
+	restConfig, err := getRemoteCluster(ctx, logger, r.Client, cluster)
 	if err != nil {
 		logger.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
@@ -189,81 +190,57 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	var kubeadmConfig bootstrapv1.KubeadmConfig
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      machine.Spec.Bootstrap.ConfigRef.Name,
-		Namespace: machine.Spec.Bootstrap.ConfigRef.Namespace,
-	}, &kubeadmConfig); err != nil {
-		logger.Error(err, "error getting bootstrap config")
+	var caSecret v1.Secret
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      secret.Name(cluster.Name, secret.ClusterCA),
+		Namespace: cluster.Namespace,
+	}, &caSecret); err != nil {
+		logger.Error(err, "error getting cluster CA secret")
 		return ctrl.Result{}, err
 	}
 
-	cfg, err := RetrieveValidatedConfigInfo(ctx, kubeadmConfig.Spec.JoinConfiguration)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	if err != nil {
-		logger.Error(err, "error validating token")
+		logger.Error(err, "failed to generate private key")
 		return ctrl.Result{}, err
 	}
-
-	clusterinfo := cfg.Clusters[""]
-	cfg = CreateWithToken(
-		clusterinfo.Server,
-		DefaultClusterName,
-		TokenUser,
-		clusterinfo.CertificateAuthorityData,
-		kubeadmConfig.Spec.JoinConfiguration.Discovery.BootstrapToken.Token,
-	)
-	certificateStore := &capkcert.MemoryStore{}
-
-	newClientFn := func(current *tls.Certificate) (clientset.Interface, error) {
-		client, err := clientset.NewForConfig(restConfig)
-		if err != nil {
-			logger.Error(err, "error creating clientset")
-			return nil, err
-		}
-		return client, nil
-	}
-	mgr, err := certificate.NewManager(&certificate.Config{
-		BootstrapCertificatePEM: cfg.AuthInfos[TokenUser].ClientCertificateData,
-		BootstrapKeyPEM:         cfg.AuthInfos[TokenUser].ClientKeyData,
-		CertificateStore:        certificateStore,
-		SignerName:              certificates.KubeAPIServerClientKubeletSignerName,
-		Template: &x509.CertificateRequest{
-			Subject: pkix.Name{
-				CommonName:   fmt.Sprintf("system:node:%s", kubemarkMachine.Name),
-				Organization: []string{"system:nodes"},
-			},
-		},
-		Usages: []certificates.KeyUsage{
-			certificates.UsageDigitalSignature,
-			certificates.UsageKeyEncipherment,
-			certificates.UsageClientAuth,
-		},
-		ClientsetFn: newClientFn,
-	})
+	der, err := x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
-		logger.Error(err, "error creating cert manager")
+		logger.Error(err, "failed to marshal the private key to DER")
+		return ctrl.Result{}, err
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: keyutil.ECPrivateKeyBlockType, Bytes: der})
+
+	caCert, err := certs.DecodeCertPEM(caSecret.Data[secret.TLSCrtDataName])
+	if err != nil {
+		logger.Error(err, "failed to decode ca certificate")
+		return ctrl.Result{}, err
+	}
+	caKey, err := certs.DecodePrivateKeyPEM(caSecret.Data[secret.TLSKeyDataName])
+	if err != nil {
+		logger.Error(err, "err decoding ca private key")
 		return ctrl.Result{}, err
 	}
 
-	mgr.Start()
-
-	for {
-		_, err := certificateStore.Current()
-		if err != nil {
-			if _, ok := err.(*certificate.NoCertKeyError); !ok {
-				logger.Error(err, "err fetching certificate")
-				return ctrl.Result{}, err
-			}
-
-			logger.Info("waiting for certificate")
-			time.Sleep(time.Second)
-
-			continue
-		}
-
-		break
+	now := time.Now().UTC()
+	kubeletCert := &x509.Certificate{
+		SerialNumber: new(big.Int).SetInt64(0),
+		Subject: pkix.Name{
+			CommonName:   fmt.Sprintf("system:node:%s", kubemarkMachine.Name),
+			Organization: []string{"system:nodes"},
+		},
+		NotBefore: now.Add(time.Minute * -5),
+		NotAfter:  now.Add(time.Hour * 24 * 365 * 10),
+		KeyUsage:  x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+		},
 	}
-	mgr.Stop()
+	certBytes, err := x509.CreateCertificate(cryptorand.Reader, kubeletCert, caCert, caKey.Public(), caKey)
+	if err != nil {
+		logger.Error(err, "err creating kubelet certificate")
+		return ctrl.Result{}, err
+	}
 
 	kubeconfig, err := generateCertificateKubeconfig(restConfig, "/kubeconfig/cert.pem")
 	if err != nil {
@@ -272,16 +249,14 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	stackedCert := bytes.Buffer{}
-	if err := pem.Encode(&stackedCert, &pem.Block{Type: cert.CertificateBlockType, Bytes: certificateStore.Certificate.Leaf.Raw}); err != nil {
+	if err := pem.Encode(&stackedCert, &pem.Block{Type: cert.CertificateBlockType, Bytes: certBytes}); err != nil {
 		logger.Error(err, "err encoding certificate")
 		return ctrl.Result{}, err
 	}
-	keyBytes, err := keyutil.MarshalPrivateKeyToPEM(certificateStore.Certificate.PrivateKey)
-	if err != nil {
-		logger.Error(err, "err encoding key")
+	if _, err := stackedCert.Write(keyPEM); err != nil {
+		logger.Error(err, "err writing pem bytes")
 		return ctrl.Result{}, err
 	}
-	stackedCert.Write(keyBytes)
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -430,18 +405,13 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 	return runtime.Encode(clientcmdlatest.Codec, kubeconfigData)
 }
 
-func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client.Client, cluster *clusterv1.Cluster) (*restclient.Config, client.Client, error) {
+func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
 	restConfig, err := remote.RESTConfig(ctx, mgmtClient, util.ObjectKey(cluster))
 	if err != nil {
 		logger.Error(err, "error getting restconfig")
-		return nil, nil, err
+		return nil, err
 	}
 	restConfig.Timeout = 30 * time.Second
 
-	c, err := client.New(restConfig, client.Options{Scheme: scheme.Scheme})
-	if err != nil {
-		logger.Error(err, "error creating client")
-		return nil, nil, err
-	}
-	return restConfig, c, err
+	return restConfig, err
 }
