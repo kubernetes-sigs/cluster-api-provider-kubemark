@@ -1,7 +1,24 @@
+/*
+Copyright 2020 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package controllers
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -9,12 +26,8 @@ import (
 	"github.com/benmoss/cluster-api-provider-kubemark/util/pubkeypin"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	certutil "k8s.io/client-go/util/cert"
@@ -33,7 +46,7 @@ const (
 	TokenUser              = "tls-bootstrap-token-user"
 )
 
-func RetrieveValidatedConfigInfo(cfg *kubeadmv1.JoinConfiguration) (*clientcmdapi.Config, error) {
+func RetrieveValidatedConfigInfo(ctx context.Context, cfg *kubeadmv1.JoinConfiguration) (*clientcmdapi.Config, error) {
 	token, err := NewBootstrapTokenString(cfg.Discovery.BootstrapToken.Token)
 	if err != nil {
 		return nil, err
@@ -48,9 +61,7 @@ func RetrieveValidatedConfigInfo(cfg *kubeadmv1.JoinConfiguration) (*clientcmdap
 
 	// The function below runs for every endpoint, and all endpoints races with each other.
 	// The endpoint that wins the race and completes the task first gets its kubeconfig returned below
-	fmt.Println("connecting to apiserver", cfg.Discovery.BootstrapToken.APIServerEndpoint)
 	baseKubeConfig, err := fetchKubeConfigWithTimeout(cfg.Discovery.BootstrapToken.APIServerEndpoint, DiscoveryRetryInterval, func(endpoint string) (*clientcmdapi.Config, error) {
-
 		insecureBootstrapConfig := buildInsecureBootstrapKubeConfig(endpoint, DefaultClusterName)
 		clusterName := insecureBootstrapConfig.Contexts[insecureBootstrapConfig.CurrentContext].Cluster
 
@@ -62,7 +73,7 @@ func RetrieveValidatedConfigInfo(cfg *kubeadmv1.JoinConfiguration) (*clientcmdap
 		klog.V(1).Infof("[discovery] Created cluster-info discovery client, requesting info from %q\n", insecureBootstrapConfig.Clusters[clusterName].Server)
 
 		// Make an initial insecure connection to get the cluster-info ConfigMap
-		insecureClusterInfo, err := insecureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
+		insecureClusterInfo, err := insecureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("[discovery] Failed to request cluster info: [%s]\n", err)
 			return nil, err
@@ -104,7 +115,6 @@ func RetrieveValidatedConfigInfo(cfg *kubeadmv1.JoinConfiguration) (*clientcmdap
 		clusterCAs, err := certutil.ParseCertsPEM(clusterCABytes)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse cluster CA from the %s configmap", bootstrapapi.ConfigMapClusterInfo)
-
 		}
 
 		// Validate the cluster CA public key against the pinned set
@@ -121,7 +131,7 @@ func RetrieveValidatedConfigInfo(cfg *kubeadmv1.JoinConfiguration) (*clientcmdap
 		}
 
 		klog.V(1).Infof("[discovery] Requesting info from %q again to validate TLS against the pinned public key\n", insecureBootstrapConfig.Clusters[clusterName].Server)
-		secureClusterInfo, err := secureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
+		secureClusterInfo, err := secureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("[discovery] Failed to request cluster info: [%s]\n", err)
 			return nil, err
@@ -257,23 +267,4 @@ func CreateWithToken(serverURL, clusterName, userName string, caCert []byte, tok
 		Token: token,
 	}
 	return config
-}
-
-// MarshalToYaml marshals an object into yaml.
-func MarshalToYaml(obj runtime.Object, gv schema.GroupVersion) ([]byte, error) {
-	return MarshalToYamlForCodecs(obj, gv, clientsetscheme.Codecs)
-}
-
-// MarshalToYamlForCodecs marshals an object into yaml using the specified codec
-// TODO: Is specifying the gv really needed here?
-// TODO: Can we support json out of the box easily here?
-func MarshalToYamlForCodecs(obj runtime.Object, gv schema.GroupVersion, codecs serializer.CodecFactory) ([]byte, error) {
-	const mediaType = runtime.ContentTypeYAML
-	info, ok := runtime.SerializerInfoForMediaType(codecs.SupportedMediaTypes(), mediaType)
-	if !ok {
-		return []byte{}, errors.Errorf("unsupported media type %q", mediaType)
-	}
-
-	encoder := codecs.EncoderForVersion(info.Serializer, gv)
-	return runtime.Encode(encoder, obj)
 }

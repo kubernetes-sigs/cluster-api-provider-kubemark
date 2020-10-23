@@ -7,5 +7,5 @@ spec:
   template:
     spec:
       containers:
-      - image: gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark/cluster-api-kubemark-controller-amd64:v0.1.0
+      - image: gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark/cluster-api-kubemark-controller:latest
         name: manager

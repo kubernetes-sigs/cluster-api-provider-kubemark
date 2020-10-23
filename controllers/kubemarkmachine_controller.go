@@ -1,5 +1,5 @@
 /*
-
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	certificates "k8s.io/api/certificates/v1beta1"
+	certificates "k8s.io/api/certificates/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	certificatesclient "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	restclient "k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
@@ -45,34 +44,28 @@ import (
 	"k8s.io/client-go/util/certificate"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
-	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha3"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	infrav1 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha3"
+	infrav1 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha4"
 	capkcert "github.com/benmoss/cluster-api-provider-kubemark/util/certificate"
-)
-
-const (
-	kubeconfigPath = "/etc/kubernetes/kubelet.conf"
-)
-
-var (
-	hostPathFile = v1.HostPathFile
 )
 
 // KubemarkMachineReconciler reconciles a KubemarkMachine object
 type KubemarkMachineReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log           logr.Logger
+	Scheme        *runtime.Scheme
+	KubemarkImage string
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachines,verbs=get;list;watch;create;update;patch;delete
@@ -81,11 +74,10 @@ type KubemarkMachineReconciler struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=configmaps,verbs=create;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=create;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete
 
-func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Log.WithValues("kubemarkmachine", req.NamespacedName)
 
 	kubemarkMachine := &infrav1.KubemarkMachine{}
@@ -97,19 +89,19 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Error(err, "error finding kubemark machine")
 		return ctrl.Result{}, err
 	}
-	helper, err := patch.NewHelper(kubemarkMachine, r)
+	helper, err := patch.NewHelper(kubemarkMachine, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
 	}
 
 	controllerutil.AddFinalizer(kubemarkMachine, infrav1.MachineFinalizer)
-	if err := helper.Patch(context.TODO(), kubemarkMachine); err != nil {
+	if err := helper.Patch(ctx, kubemarkMachine); err != nil {
 		logger.Error(err, "failed to add finalizer")
 		return ctrl.Result{}, err
 	}
 
 	defer func() {
-		if err := helper.Patch(context.TODO(), kubemarkMachine); err != nil {
+		if err := helper.Patch(ctx, kubemarkMachine); err != nil {
 			if !apierrors.IsNotFound(err) {
 				logger.Error(err, "failed to patch kubemarkMachine")
 			}
@@ -119,7 +111,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
 		logger.Info("deleting machine")
 
-		if err := r.Delete(context.TODO(), &v1.Pod{
+		if err := r.Delete(ctx, &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
 				Namespace: kubemarkMachine.Namespace,
@@ -130,7 +122,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 				return ctrl.Result{}, err
 			}
 		}
-		if err := r.Delete(context.TODO(), &v1.ConfigMap{
+		if err := r.Delete(ctx, &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
 				Namespace: kubemarkMachine.Namespace,
@@ -151,7 +143,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 
 	// Fetch the Machine.
-	machine, err := util.GetOwnerMachine(ctx, r, kubemarkMachine.ObjectMeta)
+	machine, err := util.GetOwnerMachine(ctx, r.Client, kubemarkMachine.ObjectMeta)
 	if err != nil {
 		logger.Error(err, "error finding owner machine")
 		return ctrl.Result{}, err
@@ -160,12 +152,12 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		logger.Info("Machine Controller has not yet set OwnerRef")
 		return ctrl.Result{}, nil
 	}
-	machinePatchHelper, err := patch.NewHelper(machine, r)
+	machinePatchHelper, err := patch.NewHelper(machine, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
 	}
 	defer func() {
-		if err := machinePatchHelper.Patch(context.TODO(), machine); err != nil {
+		if err := machinePatchHelper.Patch(ctx, machine); err != nil {
 			if !apierrors.IsNotFound(err) {
 				logger.Error(err, "failed to patch machine")
 			}
@@ -175,14 +167,14 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	logger = logger.WithValues("machine", machine.Name)
 
 	// Fetch the Cluster.
-	cluster, err := util.GetClusterFromMetadata(ctx, r, machine.ObjectMeta)
+	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
 	if err != nil {
 		logger.Info("Machine is missing cluster label or cluster does not exist")
 		return ctrl.Result{}, nil
 	}
 	logger = logger.WithValues("cluster", cluster.Name)
 
-	restConfig, _, err := getRemoteCluster(ctx, logger, r, cluster)
+	restConfig, _, err := getRemoteCluster(ctx, logger, r.Client, cluster)
 	if err != nil {
 		logger.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
@@ -198,7 +190,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 
 	var kubeadmConfig bootstrapv1.KubeadmConfig
-	if err := r.Get(context.TODO(), types.NamespacedName{
+	if err := r.Get(ctx, types.NamespacedName{
 		Name:      machine.Spec.Bootstrap.ConfigRef.Name,
 		Namespace: machine.Spec.Bootstrap.ConfigRef.Namespace,
 	}, &kubeadmConfig); err != nil {
@@ -206,7 +198,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		return ctrl.Result{}, err
 	}
 
-	cfg, err := RetrieveValidatedConfigInfo(kubeadmConfig.Spec.JoinConfiguration)
+	cfg, err := RetrieveValidatedConfigInfo(ctx, kubeadmConfig.Spec.JoinConfiguration)
 	if err != nil {
 		logger.Error(err, "error validating token")
 		return ctrl.Result{}, err
@@ -222,18 +214,19 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	)
 	certificateStore := &capkcert.MemoryStore{}
 
-	newClientFn := func(current *tls.Certificate) (certificatesclient.CertificateSigningRequestInterface, error) {
+	newClientFn := func(current *tls.Certificate) (clientset.Interface, error) {
 		client, err := clientset.NewForConfig(restConfig)
 		if err != nil {
 			logger.Error(err, "error creating clientset")
 			return nil, err
 		}
-		return client.CertificatesV1beta1().CertificateSigningRequests(), nil
+		return client, nil
 	}
 	mgr, err := certificate.NewManager(&certificate.Config{
 		BootstrapCertificatePEM: cfg.AuthInfos[TokenUser].ClientCertificateData,
 		BootstrapKeyPEM:         cfg.AuthInfos[TokenUser].ClientKeyData,
 		CertificateStore:        certificateStore,
+		SignerName:              certificates.KubeAPIServerClientKubeletSignerName,
 		Template: &x509.CertificateRequest{
 			Subject: pkix.Name{
 				CommonName:   fmt.Sprintf("system:node:%s", kubemarkMachine.Name),
@@ -245,7 +238,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			certificates.UsageKeyEncipherment,
 			certificates.UsageClientAuth,
 		},
-		ClientFn: newClientFn,
+		ClientsetFn: newClientFn,
 	})
 	if err != nil {
 		logger.Error(err, "error creating cert manager")
@@ -262,6 +255,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 				return ctrl.Result{}, err
 			}
 
+			logger.Info("waiting for certificate")
 			time.Sleep(time.Second)
 
 			continue
@@ -289,25 +283,27 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 	stackedCert.Write(keyBytes)
 
-	configMap := &v1.ConfigMap{
+	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Namespace: kubemarkMachine.Namespace,
 		},
-		Data: map[string]string{
-			"kubeconfig": string(kubeconfig),
-			"cert.pem":   stackedCert.String(),
+		Data: map[string][]byte{
+			"kubeconfig": kubeconfig,
+			"cert.pem":   stackedCert.Bytes(),
 		},
 	}
-	if err := r.Create(context.TODO(), configMap); err != nil {
+	if err := r.Create(ctx, secret); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			logger.Error(err, "failed to create configmap")
+			logger.Error(err, "failed to create secret")
 			return ctrl.Result{}, err
 		}
 	}
 	version := machine.Spec.Version
 	if version == nil {
-		return ctrl.Result{}, errors.New("Machine has no spec.version")
+		err := errors.New("Machine has no spec.version")
+		logger.Error(err, "")
+		return ctrl.Result{}, err
 	}
 
 	pod := &v1.Pod{
@@ -320,7 +316,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			Containers: []v1.Container{
 				{
 					Name:  kubemarkName,
-					Image: fmt.Sprintf("gcr.io/cf-london-servces-k8s/bmo/kubemark:%s", *version),
+					Image: fmt.Sprintf("%s:%s", r.KubemarkImage, *version),
 					Args: []string{
 						"--v=3",
 						"--morph=kubelet",
@@ -356,8 +352,8 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 				{
 					Name: "kubeconfig",
 					VolumeSource: v1.VolumeSource{
-						ConfigMap: &v1.ConfigMapVolumeSource{
-							LocalObjectReference: v1.LocalObjectReference{Name: configMap.Name},
+						Secret: &v1.SecretVolumeSource{
+							SecretName: secret.Name,
 						},
 					},
 				},
@@ -365,7 +361,7 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		},
 	}
 
-	if err = r.Create(context.TODO(), pod); err != nil {
+	if err = r.Create(ctx, pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
@@ -378,16 +374,26 @@ func (r *KubemarkMachineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	return ctrl.Result{}, nil
 }
 
-func (r *KubemarkMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	clusterToKubemarkMachines, err := util.ClusterToObjectsMapper(mgr.GetClient(), &infrav1.KubemarkMachineList{}, mgr.GetScheme())
+	if err != nil {
+		return err
+	}
+	c, err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.KubemarkMachine{}).
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
-			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine")),
-			},
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
 		).
-		Complete(r)
+		Build(r)
+	if err != nil {
+		return err
+	}
+	return c.Watch(
+		&source.Kind{Type: &clusterv1.Cluster{}},
+		handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines),
+		predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
+	)
 }
 
 func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pemPath string) ([]byte, error) {
