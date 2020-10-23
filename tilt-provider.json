@@ -1,7 +1,7 @@
 {
   "name": "kubemark",
   "config": {
-    "image": "gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark-controller",
+    "image": "gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark/cluster-api-kubemark-controller",
     "live_reload_deps": [
       "main.go",
       "go.mod",
