@@ -236,7 +236,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			x509.ExtKeyUsageClientAuth,
 		},
 	}
-	certBytes, err := x509.CreateCertificate(cryptorand.Reader, kubeletCert, caCert, caKey.Public(), caKey)
+	certBytes, err := x509.CreateCertificate(cryptorand.Reader, kubeletCert, caCert, &privateKey.PublicKey, caKey)
 	if err != nil {
 		logger.Error(err, "err creating kubelet certificate")
 		return ctrl.Result{}, err
