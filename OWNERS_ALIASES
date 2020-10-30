@@ -1,0 +1,22 @@
+# See the OWNERS docs at https://go.k8s.io/owners#owners_aliases
+
+aliases:
+  sig-cluster-lifecycle-leads:
+  - neolit123
+  - justinsb
+  - timothysc
+  - fabriziopandini
+
+  cluster-api-admins:
+  - justinsb
+  - detiber
+  - davidewatson
+  - vincepri
+
+  # non-admin folks who have write-access and can approve any PRs in the repo
+  cluster-api-maintainers:
+  - justinsb
+  - detiber
+  - ncdc
+  - vincepri
+  - CecileRobertMichon
