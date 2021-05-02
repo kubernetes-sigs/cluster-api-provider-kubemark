@@ -40,7 +40,7 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/benmoss/cluster-api-provider-kubemark/releases/latest/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/download/v0.2.2/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
 
