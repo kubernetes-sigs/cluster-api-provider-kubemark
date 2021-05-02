@@ -1,5 +1,5 @@
 domain: cluster.x-k8s.io
-repo: github.com/benmoss/cluster-api-provider-kubemark
+repo: github.com/kubernetes-sigs/cluster-api-provider-kubemark
 resources:
 - group: infrastructure
   kind: KubemarkMachine
