@@ -1,14 +1,14 @@
-module github.com/benmoss/cluster-api-provider-kubemark
+module github.com/kubernetes-sigs/cluster-api-provider-kubemark
 
-go 1.15
+go 1.16
 
 require (
-	github.com/go-logr/logr v0.2.1
-	k8s.io/api v0.19.2
-	k8s.io/apimachinery v0.19.2
-	k8s.io/client-go v0.19.2
-	k8s.io/klog/v2 v2.2.0
-	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
-	sigs.k8s.io/cluster-api v0.3.11-0.20201022175336-5ac19dc6a5f7
-	sigs.k8s.io/controller-runtime v0.7.0-alpha.3
+	github.com/go-logr/logr v0.4.0
+	k8s.io/api v0.21.3
+	k8s.io/apimachinery v0.22.0-alpha.0.0.20210417144234-8daf28983e6e
+	k8s.io/client-go v0.21.3
+	k8s.io/klog/v2 v2.9.0
+	k8s.io/utils v0.0.0-20210722164352-7f3ee0f31471
+	sigs.k8s.io/cluster-api v0.4.2
+	sigs.k8s.io/controller-runtime v0.9.6
 )

@@ -28,8 +28,8 @@ import (
 	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1alpha4"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	infrastructurev1alpha4 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha4"
-	"github.com/benmoss/cluster-api-provider-kubemark/controllers"
+	infrastructurev1alpha4 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	"github.com/kubernetes-sigs/cluster-api-provider-kubemark/controllers"
 	// +kubebuilder:scaffold:imports
 )
 

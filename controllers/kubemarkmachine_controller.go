@@ -30,7 +30,7 @@ import (
 	"math/big"
 	"time"
 
-	infrav1 "github.com/benmoss/cluster-api-provider-kubemark/api/v1alpha4"
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +59,9 @@ import (
 
 const (
 	kubemarkName = "hollow-node"
+
+    // MachineControllerName defines the user-agent name used when creating rest clients
+    MachineControllerName = "kubemarkmachine-controller"
 )
 
 // KubemarkMachineReconciler reconciles a KubemarkMachine object
@@ -406,7 +409,7 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 }
 
 func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
-	restConfig, err := remote.RESTConfig(ctx, mgmtClient, util.ObjectKey(cluster))
+	restConfig, err := remote.RESTConfig(ctx, MachineControllerName, mgmtClient, util.ObjectKey(cluster))
 	if err != nil {
 		logger.Error(err, "error getting restconfig")
 		return nil, err

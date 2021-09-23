@@ -73,7 +73,7 @@ test: ## Run tests
 
 .PHONY: manager
 manager: ## Build manager binary
-	go build -o $(BIN_DIR)/manager github.com/benmoss/cluster-api-provider-kubemark
+	go build -o $(BIN_DIR)/manager github.com/kubernetes-sigs/cluster-api-provider-kubemark
 
 $(CONTROLLER_GEN): $(TOOLS_DIR)/go.mod # Build controller-gen from tools folder.
 	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/controller-gen sigs.k8s.io/controller-tools/cmd/controller-gen
