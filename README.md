@@ -40,7 +40,7 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/download/v0.2.2/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.2.2/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
 
@@ -52,7 +52,7 @@ simple.
 Initialize this provider into your cluster by running:
 
 ```bash
-clusterctl init --infrastructure kubemark,capd
+clusterctl init --infrastructure kubemark,docker
 ```
 
 Once initialized, you'll need to deploy your workload cluster using the `capd`
