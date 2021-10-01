@@ -83,4 +83,4 @@ Tilt setup. Add `kubemark` to the list of providers in your
 [kubemark_docs]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-scalability/kubemark-guide.md
 [cluster_api]: https://github.com/kubernetes-sigs/cluster-api
 [tilt]: https://tilt.dev
-[capi_tilt]: https://master.cluster-api.sigs.k8s.io/developer/tilt.html
+[capi_tilt]: https://cluster-api.sigs.k8s.io/developer/tilt.html
