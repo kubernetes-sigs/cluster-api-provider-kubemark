@@ -53,7 +53,8 @@ func main() {
 	var enableLeaderElection bool
 	var kubemarkImage string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&kubemarkImage, "kubemark-image", "gcr.io/cf-london-servces-k8s/bmo/kubemark", "The location of the kubemark image")
+	// TODO (elmiko) update the following default image link when we have a home for the kubemark images
+	flag.StringVar(&kubemarkImage, "kubemark-image", "quay.io/elmiko/kubemark", "The location of the kubemark image")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
