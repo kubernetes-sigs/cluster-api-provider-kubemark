@@ -112,7 +112,7 @@ func (p *PublishImages) dockerBuild(v *semver.Version) error {
 		return err
 	}
 
-	cmd = exec.Command("make", "-C", p.KubeDir, "clean", "all", "WHAT=cmd/kubemark")
+	cmd = exec.Command("make", "-C", p.KubeDir, "clean", "all", "WHAT=cmd/kubemark", "CGO_ENABLED=0")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
