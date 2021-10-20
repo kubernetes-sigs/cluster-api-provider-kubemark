@@ -24,7 +24,7 @@
 Cluster API Provider Kubemark (CAPK) is a provider for [Cluster
 API][cluster_api] (CAPI) that allows users to deploy fake, [Kubemark][kubemark_docs]-backed machines to their
 clusters. This is useful in a variety of scenarios, such load-testing and
-simulation testing. 
+simulation testing.
 
 It is slightly similar to [CAPD][capd], the Docker
 provider, in that it does not deploy actual infrastructure resources (VMs or
@@ -40,9 +40,11 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.2.2/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.2.3/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
+
+*Note: the `v0.2.3` release of the kubemark provider has been tested with the `v0.4.\*` versions of Cluster API*
 
 For demonstration purposes, we'll use the [CAPD][capd] provider. Other
 providers will also work, but CAPD is supported with a custom
@@ -59,7 +61,7 @@ Once initialized, you'll need to deploy your workload cluster using the `capd`
 flavor to get a hybrid CAPD/CAPK cluster:
 
 ```bash
-clusterctl config cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.19.1 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
+clusterctl config cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.21.1 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
 You should see your cluster come up and quickly become available with 4 Kubemark machines connected to your CAPD control plane.
@@ -67,8 +69,8 @@ You should see your cluster come up and quickly become available with 4 Kubemark
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl config cluster wow --infrastructure aws      --kubernetes-version 1.19.1 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl config cluster wow --infrastructure kubemark --kubernetes-version 1.19.1 --worker-machine-count=4        | kubectl apply -f-
+clusterctl config cluster wow --infrastructure aws      --kubernetes-version 1.21.1 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl config cluster wow --infrastructure kubemark --kubernetes-version 1.21.1 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
