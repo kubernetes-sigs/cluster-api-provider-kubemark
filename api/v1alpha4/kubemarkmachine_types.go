@@ -18,14 +18,22 @@ package v1alpha4
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
+
+type KubemarkExtendedResourceName string
+type KubemarkExtendedResourceList map[KubemarkExtendedResourceName]resource.Quantity
 
 const (
 	// MachineFinalizer allows the controller to clean up resources associated with KubemarkMachine before
 	// removing it from the apiserver.
 	MachineFinalizer = "kubemarkmachine.infrastructure.cluster.x-k8s.io"
+
+	// ExtendedResource types for KubemarkMachines
+	KubemarkExtendedResourceCPU    KubemarkExtendedResourceName = "cpu"
+	KubemarkExtendedResourceMemory KubemarkExtendedResourceName = "memory"
 )
 
 // KubemarkMachineSpec defines the desired state of KubemarkMachine
@@ -34,6 +42,8 @@ type KubemarkMachineSpec struct {
 	// These may be used to bind a hostPath
 	// +optional
 	ExtraMounts []Mount `json:"extraMounts,omitempty"`
+
+	KubemarkOptions KubemarkProcessOptions `json:"kubemarkOptions,omitempty"`
 }
 
 // Mount specifies a host volume to mount into a container.
@@ -57,6 +67,12 @@ type Mount struct {
 	// +kubebuilder:validation:Enum:="";"DirectoryOrCreate";"Directory";"FileOrCreate";"File";"Socket";"CharDevice";"BlockDevice"
 	// +optional
 	Type *corev1.HostPathType `json:"type,omitempty"`
+}
+
+// KubemarkProcessOptions contain fields that are converted to command line flags
+// when running the kubemark container for a hollow node.
+type KubemarkProcessOptions struct {
+	ExtendedResources KubemarkExtendedResourceList `json:"extendedResources,omitempty"`
 }
 
 // KubemarkMachineStatus defines the observed state of KubemarkMachine

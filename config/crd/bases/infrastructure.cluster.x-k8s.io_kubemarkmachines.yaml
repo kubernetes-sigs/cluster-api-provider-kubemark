@@ -75,6 +75,20 @@ spec:
                   - name
                   type: object
                 type: array
+              kubemarkOptions:
+                description: KubemarkProcessOptions contain fields that are converted
+                  to command line flags when running the kubemark container for a
+                  hollow node.
+                properties:
+                  extendedResources:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    type: object
+                type: object
             type: object
           status:
             description: KubemarkMachineStatus defines the observed state of KubemarkMachine

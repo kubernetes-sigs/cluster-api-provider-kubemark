@@ -79,6 +79,31 @@ To deploy the Kubemark provider, the recommended way at this time is using
 Tilt setup. Add `kubemark` to the list of providers in your
 `tilt-settings.json` file and you should be off to the races.
 
+## Hollow Node Resources
+When using Kubernetes version 1.22 and greater, you may specify the resource
+capacities advertised by the Kubemark Nodes.
+
+By default, all nodes will report `1` CPU, and `4G` memory. These are [Kubernetes quantity][k8s_quantity_docs]
+values and can be modified by adding fields to the KubemarkMachineTemplates you are using.
+For example, to create a Node that advertises `32` CPU and `128G` memory, create a manifest as follows:
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+kind: KubemarkMachineTemplate
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: mycluster
+  name: kubemark-big-machine
+  namespace: default
+spec:
+  template:
+    spec:
+      kubemarkOptions:
+        extendedResources:
+          cpu: "32"
+          memory: "128G"
+```
+
 <!-- References -->
 
 [capd]: https://github.com/kubernetes-sigs/cluster-api/tree/master/test/infrastructure/docker
@@ -86,3 +111,4 @@ Tilt setup. Add `kubemark` to the list of providers in your
 [cluster_api]: https://github.com/kubernetes-sigs/cluster-api
 [tilt]: https://tilt.dev
 [capi_tilt]: https://cluster-api.sigs.k8s.io/developer/tilt.html
+[k8s_quantity_docs]: https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
