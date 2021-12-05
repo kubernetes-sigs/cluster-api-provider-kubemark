@@ -45,6 +45,48 @@ spec:
                   spec:
                     description: Spec is the specification of the desired behavior
                       of the machine.
+                    properties:
+                      extraMounts:
+                        description: ExtraMounts describes additional mount points
+                          for the node container These may be used to bind a hostPath
+                        items:
+                          description: Mount specifies a host volume to mount into
+                            a container. This is a simplified version of kind v1alpha4.Mount
+                            types.
+                          properties:
+                            containerPath:
+                              description: Path of the mount within the container.
+                              type: string
+                            hostPath:
+                              description: Path of the mount on the host. If the hostPath
+                                doesn't exist, then runtimes should report error.
+                                If the hostpath is a symbolic link, runtimes should
+                                follow the symlink and mount the real destination
+                                to container.
+                              type: string
+                            name:
+                              description: Name of the mount.
+                              type: string
+                            type:
+                              description: 'Type for HostPath Volume Defaults to ""
+                                More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
+                                validations taken from https://github.com/kubernetes/api/blob/master/core/v1/types.go#L664'
+                              enum:
+                              - ""
+                              - DirectoryOrCreate
+                              - Directory
+                              - FileOrCreate
+                              - File
+                              - Socket
+                              - CharDevice
+                              - BlockDevice
+                              type: string
+                          required:
+                          - containerPath
+                          - hostPath
+                          - name
+                          type: object
+                        type: array
                     type: object
                 required:
                 - spec

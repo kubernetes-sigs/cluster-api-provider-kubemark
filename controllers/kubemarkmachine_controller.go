@@ -30,8 +30,8 @@ import (
 	"math/big"
 	"time"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"github.com/go-logr/logr"
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -60,8 +60,8 @@ import (
 const (
 	kubemarkName = "hollow-node"
 
-    // MachineControllerName defines the user-agent name used when creating rest clients
-    MachineControllerName = "kubemarkmachine-controller"
+	// MachineControllerName defines the user-agent name used when creating rest clients
+	MachineControllerName = "kubemarkmachine-controller"
 )
 
 // KubemarkMachineReconciler reconciles a KubemarkMachine object
@@ -337,6 +337,29 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				},
 			},
 		},
+	}
+
+	for _, v := range kubemarkMachine.Spec.ExtraMounts {
+		for i, c := range pod.Spec.Containers {
+			pod.Spec.Containers[i].VolumeMounts = append(
+				c.VolumeMounts,
+				v1.VolumeMount{
+					MountPath: v.ContainerPath,
+					Name:      v.Name,
+				})
+		}
+
+		pod.Spec.Volumes = append(
+			pod.Spec.Volumes,
+			v1.Volume{
+				Name: v.Name,
+				VolumeSource: v1.VolumeSource{
+					HostPath: &v1.HostPathVolumeSource{
+						Path: v.HostPath,
+						Type: v.Type,
+					},
+				},
+			})
 	}
 
 	if err = r.Create(ctx, pod); err != nil {
