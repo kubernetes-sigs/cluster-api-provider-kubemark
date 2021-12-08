@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha4
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
@@ -29,6 +30,33 @@ const (
 
 // KubemarkMachineSpec defines the desired state of KubemarkMachine
 type KubemarkMachineSpec struct {
+	// ExtraMounts describes additional mount points for the node container
+	// These may be used to bind a hostPath
+	// +optional
+	ExtraMounts []Mount `json:"extraMounts,omitempty"`
+}
+
+// Mount specifies a host volume to mount into a container.
+// This is a simplified version of kind v1alpha4.Mount types.
+type Mount struct {
+	// Name of the mount.
+	Name string `json:"name"`
+
+	// Path of the mount within the container.
+	ContainerPath string `json:"containerPath"`
+
+	// Path of the mount on the host. If the hostPath doesn't exist, then runtimes
+	// should report error. If the hostpath is a symbolic link, runtimes should
+	// follow the symlink and mount the real destination to container.
+	HostPath string `json:"hostPath"`
+
+	// Type for HostPath Volume
+	// Defaults to ""
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
+	// validations taken from https://github.com/kubernetes/api/blob/master/core/v1/types.go#L664
+	// +kubebuilder:validation:Enum:="";"DirectoryOrCreate";"Directory";"FileOrCreate";"File";"Socket";"CharDevice";"BlockDevice"
+	// +optional
+	Type *corev1.HostPathType `json:"type,omitempty"`
 }
 
 // KubemarkMachineStatus defines the observed state of KubemarkMachine
