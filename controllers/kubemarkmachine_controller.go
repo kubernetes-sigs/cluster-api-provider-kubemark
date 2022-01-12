@@ -28,8 +28,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
 	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	v1 "k8s.io/api/core/v1"
@@ -284,6 +286,37 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
+	kubemarkArgs := []string{
+		"--v=3",
+		"--morph=kubelet",
+		"--log-file=/var/log/kubelet.log",
+		"--logtostderr=false",
+		fmt.Sprintf("--name=%s", kubemarkMachine.Name),
+	}
+
+	// Kubemark extended resources are only supported after version 1.22.0
+	// TODO remove the version check once 1.22.0 is no longer supported.
+	c, err := semver.NewConstraint(">= 1.22.0")
+	if err != nil {
+		logger.Error(err, "Unable to create version constraint")
+		return ctrl.Result{}, err
+	}
+	v, err := semver.NewVersion(*version)
+	if err != nil {
+		logger.Error(err, "Unable to create version constraint")
+		return ctrl.Result{}, err
+	}
+	extendedResourcesFlag := getKubemarkExtendedResourcesFlag(&kubemarkMachine.Spec.KubemarkOptions)
+	if len(extendedResourcesFlag) > 0 {
+		if c.Check(v) {
+			kubemarkArgs = append(kubemarkArgs, extendedResourcesFlag)
+		} else {
+			err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
+			logger.Error(err, "observed version: %s", *version)
+			return ctrl.Result{}, err
+		}
+	}
+
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
@@ -293,15 +326,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  kubemarkName,
-					Image: fmt.Sprintf("%s:%s", r.KubemarkImage, *version),
-					Args: []string{
-						"--v=3",
-						"--morph=kubelet",
-						"--log-file=/var/log/kubelet.log",
-						"--logtostderr=false",
-						fmt.Sprintf("--name=%s", kubemarkMachine.Name),
-					},
+					Name:    kubemarkName,
+					Image:   fmt.Sprintf("%s:%s", r.KubemarkImage, *version),
+					Args:    kubemarkArgs,
 					Command: []string{"/kubemark"},
 					SecurityContext: &v1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
@@ -440,4 +467,28 @@ func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client
 	restConfig.Timeout = 30 * time.Second
 
 	return restConfig, err
+}
+
+// Return the raw kubemark command line flags for `--extended-resources` if they
+// are specified in the spec. This function will also ensure that the cpu and memory
+// resources are always set, with the defaults being `cpu=1,memory=4G`.
+func getKubemarkExtendedResourcesFlag(options *infrav1.KubemarkProcessOptions) string {
+	resourcemap := map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
+		infrav1.KubemarkExtendedResourceCPU:    resource.MustParse("1"),
+		infrav1.KubemarkExtendedResourceMemory: resource.MustParse("4G"),
+	}
+
+	if options != nil && options.ExtendedResources != nil {
+		for k, v := range options.ExtendedResources {
+			resourcemap[k] = v
+		}
+	}
+
+	resources := []string{}
+	for k, v := range resourcemap {
+		resources = append(resources, fmt.Sprintf("%s=%s", k, v.String()))
+	}
+
+	flags := fmt.Sprintf("--extended-resources=%s", strings.Join(resources, ","))
+	return flags
 }
