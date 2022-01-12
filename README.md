@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/sigs.k8s.io/cluster-api-provider-kubemark)](https://goreportcard.com/report/sigs.k8s.io/cluster-api-provider-kubemark)
+ [![Coverage Status](https://coveralls.io/repos/github/kubernetes-sigs/cluster-api-provider-kubemark/badge.png?branch=main)](https://coveralls.io/github/kubernetes-sigs/cluster-api-provider-kubemark?branch=main)
 ```
    ________           __               ___    ____  ____
   / ____/ /_  _______/ /____  _____   /   |  / __ \/  _/
