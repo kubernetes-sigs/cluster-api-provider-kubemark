@@ -76,9 +76,8 @@ spec:
                   type: object
                 type: array
               kubemarkOptions:
-                description: KubemarkProcessOptions contain fields that are converted
-                  to command line flags when running the kubemark container for a
-                  hollow node.
+                description: KubemarkOptions are API representations of command line
+                  flags that will be passed to the `kubemark` binary.
                 properties:
                   extendedResources:
                     additionalProperties:
@@ -87,6 +86,10 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
+                    description: 'ExtendedResources is a map of resource-type:value
+                      pairs that describe resources which the result machine and node
+                      will advertise as capacity. These will only be used with Kubernetes
+                      v1.22+. Defaults to {"cpu": "1", "memory": "4G"}'
                     type: object
                 type: object
             type: object
