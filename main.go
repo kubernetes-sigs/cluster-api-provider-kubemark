@@ -83,6 +83,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "KubemarkMachine")
 		os.Exit(1)
 	}
+	if err = (&controllers.KubemarkMachineTemplateReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("KubemarkMachineTemplate"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KubemarkMachineTemplate")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
