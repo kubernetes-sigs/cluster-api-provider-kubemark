@@ -83,3 +83,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - kubemarkmachinetemplates/status
+  verbs:
+  - get
+  - patch
+  - update

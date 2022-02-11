@@ -18,10 +18,15 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,9 +38,11 @@ type KubemarkMachineTemplateReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachinetemplates,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachinetemplates/status,verbs=get;update;patch
 
 func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Log.WithValues("kubemarkmachinetemplate", req.NamespacedName)
+	updateRequired := false
 
 	var machineTemplate infrav1.KubemarkMachineTemplate
 	if err := r.Get(ctx, req.NamespacedName, &machineTemplate); err != nil {
@@ -43,7 +50,32 @@ func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info("reconciling KubemarkMachineTemplate", machineTemplate.Name)
+	helper, err := patch.NewHelper(&machineTemplate, r.Client)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
+	}
+
+	if machineTemplate.Spec.Template.Spec.KubemarkOptions.ExtendedResources != nil {
+		extendedResources := getKubemarkExtendedResources(machineTemplate.Spec.Template.Spec.KubemarkOptions)
+		capacity := corev1.ResourceList{}
+		for k, v := range extendedResources {
+			capacity[corev1.ResourceName(k)] = v
+		}
+
+		if reflect.DeepEqual(machineTemplate.Status.Capacity, capacity) != true {
+			machineTemplate.Status.Capacity = capacity
+			updateRequired = true
+		}
+	}
+
+	if updateRequired {
+		if err := helper.Patch(ctx, &machineTemplate); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "failed to patch machineTemplate")
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
