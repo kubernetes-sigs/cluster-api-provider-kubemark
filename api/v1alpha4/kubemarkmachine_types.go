@@ -43,6 +43,9 @@ type KubemarkMachineSpec struct {
 	// +optional
 	ExtraMounts []Mount `json:"extraMounts,omitempty"`
 
+	// KubemarkOptions are API representations of command line flags that
+	// will be passed to the `kubemark` binary.
+	// +optional
 	KubemarkOptions KubemarkProcessOptions `json:"kubemarkOptions,omitempty"`
 }
 
@@ -72,6 +75,10 @@ type Mount struct {
 // KubemarkProcessOptions contain fields that are converted to command line flags
 // when running the kubemark container for a hollow node.
 type KubemarkProcessOptions struct {
+	// ExtendedResources is a map of resource-type:value pairs that describe
+	// resources which the result machine and node will advertise as capacity.
+	// These will only be used with Kubernetes v1.22+.
+	// Defaults to {"cpu": "1", "memory": "4G"}
 	ExtendedResources KubemarkExtendedResourceList `json:"extendedResources,omitempty"`
 }
 
