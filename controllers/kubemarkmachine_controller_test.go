@@ -34,50 +34,34 @@ const (
 func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 	tests := []struct {
 		name          string
-		resources     *infrav1.KubemarkProcessOptions
+		resources     infrav1.KubemarkExtendedResourceList
 		expectedFlags string // the expected flags string does not need to be in a specific order
 	}{
 		{
-			name:          "default values",
+			name:          "empty string",
 			resources:     nil,
-			expectedFlags: "--extended-resources=cpu=1,memory=4G",
+			expectedFlags: "",
 		},
 		{
-			name: "replace cpu",
-			resources: &infrav1.KubemarkProcessOptions{
-				ExtendedResources: map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
-					infrav1.KubemarkExtendedResourceCPU: resource.MustParse("2"),
-				},
+			name: "cpu",
+			resources: infrav1.KubemarkExtendedResourceList{
+				infrav1.KubemarkExtendedResourceCPU: resource.MustParse("2"),
 			},
-			expectedFlags: "--extended-resources=cpu=2,memory=4G",
+			expectedFlags: "--extended-resources=cpu=2",
 		},
 		{
-			name: "replace memory",
-			resources: &infrav1.KubemarkProcessOptions{
-				ExtendedResources: map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
-					infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
-				},
+			name: "memory",
+			resources: infrav1.KubemarkExtendedResourceList{
+				infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
 			},
-			expectedFlags: "--extended-resources=cpu=1,memory=16G",
+			expectedFlags: "--extended-resources=memory=16G",
 		},
 		{
-			name: "replace all",
-			resources: &infrav1.KubemarkProcessOptions{
-				ExtendedResources: map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
-					infrav1.KubemarkExtendedResourceCPU:    resource.MustParse("2"),
-					infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
-				},
-			},
-			expectedFlags: "--extended-resources=cpu=2,memory=16G",
-		},
-		{
-			name: "replace all, add gpu",
-			resources: &infrav1.KubemarkProcessOptions{
-				ExtendedResources: map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
-					infrav1.KubemarkExtendedResourceCPU:    resource.MustParse("2"),
-					infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
-					"nvidia.com/gpu":                       resource.MustParse("1"),
-				},
+			name: "cpu, memory, gpu",
+			resources: infrav1.KubemarkExtendedResourceList{
+				infrav1.KubemarkExtendedResourceCPU:    resource.MustParse("2"),
+				infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
+				"nvidia.com/gpu":                       resource.MustParse("1"),
 			},
 			expectedFlags: "--extended-resources=cpu=2,memory=16G,nvidia.com/gpu=1",
 		},
@@ -103,6 +87,10 @@ func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 // This is a helper function for processing the extended resources command line flags.
 // It accepts a string in the format of the flag and returns a map of resources and quantities.
 func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
+	if flags == "" {
+		return nil, nil
+	}
+
 	if !strings.HasPrefix(flags, kubemarkExtendedResourcesFlag) {
 		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags))
 	}

@@ -306,11 +306,13 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Error(err, "Unable to create version constraint")
 		return ctrl.Result{}, err
 	}
-	extendedResourcesFlag := getKubemarkExtendedResourcesFlag(&kubemarkMachine.Spec.KubemarkOptions)
-	if len(extendedResourcesFlag) > 0 {
-		if c.Check(v) {
-			kubemarkArgs = append(kubemarkArgs, extendedResourcesFlag)
-		} else {
+
+	if c.Check(v) {
+		extendedResources := getKubemarkExtendedResources(kubemarkMachine.Spec.KubemarkOptions)
+		extendedResourcesFlag := getKubemarkExtendedResourcesFlag(extendedResources)
+		kubemarkArgs = append(kubemarkArgs, extendedResourcesFlag)
+	} else {
+		if kubemarkMachine.Spec.KubemarkOptions.ExtendedResources != nil {
 			err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
 			logger.Error(err, "observed version: %s", *version)
 			return ctrl.Result{}, err
@@ -469,23 +471,15 @@ func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client
 	return restConfig, err
 }
 
-// Return the raw kubemark command line flags for `--extended-resources` if they
-// are specified in the spec. This function will also ensure that the cpu and memory
-// resources are always set, with the defaults being `cpu=1,memory=4G`.
-func getKubemarkExtendedResourcesFlag(options *infrav1.KubemarkProcessOptions) string {
-	resourcemap := map[infrav1.KubemarkExtendedResourceName]resource.Quantity{
-		infrav1.KubemarkExtendedResourceCPU:    resource.MustParse("1"),
-		infrav1.KubemarkExtendedResourceMemory: resource.MustParse("4G"),
-	}
-
-	if options != nil && options.ExtendedResources != nil {
-		for k, v := range options.ExtendedResources {
-			resourcemap[k] = v
-		}
+// getKubemarkExtendedResourcesFlag returns the raw kubemark command line flags for
+// `--extended-resources` if they are specified in the spec.
+func getKubemarkExtendedResourcesFlag(extendedResources infrav1.KubemarkExtendedResourceList) string {
+	if extendedResources == nil {
+		return ""
 	}
 
 	resources := []string{}
-	for k, v := range resourcemap {
+	for k, v := range extendedResources {
 		resources = append(resources, fmt.Sprintf("%s=%s", k, v.String()))
 	}
 
