@@ -17,7 +17,6 @@ limitations under the License.
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -92,7 +91,7 @@ func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
 	}
 
 	if !strings.HasPrefix(flags, kubemarkExtendedResourcesFlag) {
-		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags))
+		return nil, fmt.Errorf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags)
 	}
 
 	ret := map[string]string{}
@@ -102,7 +101,7 @@ func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
 		// split the resource string into its key and value
 		rsplit := strings.Split(r, "=")
 		if len(rsplit) != 2 {
-			return nil, errors.New(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
+			return nil, fmt.Errorf("unable to split resource pair `%s` in `%s`", r, flags)
 		}
 		ret[rsplit[0]] = rsplit[1]
 	}
