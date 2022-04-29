@@ -63,9 +63,11 @@ help:  ## Display this help
 ## Testing
 ## --------------------------------------
 
-.PHONY: test
+.PHONY: test test-e2e
 test: ## Run tests
 	go test -v ./...
+test-e2e: ## Launch integration e2e test with building images (for local usage)
+	$(MAKE) -C hack/tests test-e2e
 
 ## --------------------------------------
 ## Binaries

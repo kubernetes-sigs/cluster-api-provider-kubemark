@@ -112,3 +112,30 @@ spec:
 [tilt]: https://tilt.dev
 [capi_tilt]: https://cluster-api.sigs.k8s.io/developer/tilt.html
 [k8s_quantity_docs]: https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
+
+## Running Integration (E2E) Test
+
+### Prerequisites
+
+To run this pipeline docker, kind, python must be installed.
+
+You can run the E2E test with the following steps:
+
+```bash
+export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.21.10
+export CAPI_PATH=<path to cluster-api repository>
+export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
+cd $(ROOT_DIR)
+make test-e2e 
+```
+
+## Supported Versions
+
+| Dependency   | Version     |
+|:------------ |:-----------:|
+| kubectl      | v1.23 |
+| kubernetes   | v1.21 |
+| Go           | v1.18 |
+| kind         | v0.11 |
+| cluster-api  | v0.4  |
+| kustomize    | v4.4  |
