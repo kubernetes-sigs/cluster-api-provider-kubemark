@@ -62,7 +62,7 @@ func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req c
 			capacity[corev1.ResourceName(k)] = v
 		}
 
-		if reflect.DeepEqual(machineTemplate.Status.Capacity, capacity) != true {
+		if !reflect.DeepEqual(machineTemplate.Status.Capacity, capacity) {
 			machineTemplate.Status.Capacity = capacity
 			updateRequired = true
 		}
