@@ -4,7 +4,7 @@ CERT_MANAGER_IMAGE_REPOSITORY ?= quay.io/jetstack
 CERT_MANAGER_CAINJECTOR ?= cert-manager-cainjector
 CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
-CERT_MANAGER_VERSION ?= v1.1.0
+CERT_MANAGER_VERSION ?= v1.5.3
 KUBE_RBAC_PROXY_VERSION ?= v0.5.0
 KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
@@ -120,10 +120,10 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .deploy-cluster-api:
 	@$(CAPI_PATH)/bin/clusterctl init \
 	 --config ~/.cluster-api/dev-repository/config.yaml \
-	 --core cluster-api:v0.4.99 \
-	 --bootstrap kubeadm:v0.4.99 \
-	 --control-plane kubeadm:v0.4.99 \
-	 --infrastructure docker:v0.4.99
+	 --core cluster-api:v1.0.99 \
+	 --bootstrap kubeadm:v1.0.99 \
+	 --control-plane kubeadm:v1.0.99 \
+	 --infrastructure docker:v1.0.99
 
 	@kubectl kustomize $(abspath $(ROOT_DIR))/config | \
 	  kubectl apply -f -
