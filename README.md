@@ -137,5 +137,5 @@ make test-e2e
 | kubernetes   | v1.21 |
 | Go           | v1.18 |
 | kind         | v0.11 |
-| cluster-api  | v0.4  |
+| cluster-api  | v1.0  |
 | kustomize    | v4.4  |
