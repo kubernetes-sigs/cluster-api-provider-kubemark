@@ -69,9 +69,10 @@ const (
 // KubemarkMachineReconciler reconciles a KubemarkMachine object
 type KubemarkMachineReconciler struct {
 	client.Client
-	Log           logr.Logger
-	Scheme        *runtime.Scheme
-	KubemarkImage string
+	KubemarkCluster KubemarkCluster
+	Log             logr.Logger
+	Scheme          *runtime.Scheme
+	KubemarkImage   string
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachines,verbs=get;list;watch;create;update;patch;delete
@@ -114,13 +115,23 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}()
 
+	kubemarkClusterClient, kubemarkClusterNamespace, err := r.KubemarkCluster.GenerateKubemarkClusterClient(kubemarkMachine.Spec.KubemarkHollowPodClusterSecretRef, kubemarkMachine.Namespace, ctx)
+	if err != nil {
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, err
+	}
+
+	if kubemarkClusterClient == nil {
+		logger.Info("Waiting for kubemark cluster client...")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
 		logger.Info("deleting machine")
 
-		if err := r.Delete(ctx, &v1.Pod{
+		if err := kubemarkClusterClient.Delete(ctx, &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: kubemarkMachine.Namespace,
+				Namespace: kubemarkClusterNamespace,
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -128,10 +139,10 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				return ctrl.Result{}, err
 			}
 		}
-		if err := r.Delete(ctx, &v1.Secret{
+		if err := kubemarkClusterClient.Delete(ctx, &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: kubemarkMachine.Namespace,
+				Namespace: kubemarkClusterNamespace,
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -266,14 +277,14 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
-			Namespace: kubemarkMachine.Namespace,
+			Namespace: kubemarkClusterNamespace,
 		},
 		Data: map[string][]byte{
 			"kubeconfig": kubeconfig,
 			"cert.pem":   stackedCert.Bytes(),
 		},
 	}
-	if err := r.Create(ctx, secret); err != nil {
+	if err := kubemarkClusterClient.Create(ctx, secret); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create secret")
 			return ctrl.Result{}, err
@@ -323,7 +334,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Labels:    map[string]string{"app": kubemarkName},
-			Namespace: kubemarkMachine.Namespace,
+			Namespace: kubemarkClusterNamespace,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -391,7 +402,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			})
 	}
 
-	if err = r.Create(ctx, pod); err != nil {
+	if err = kubemarkClusterClient.Create(ctx, pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			logger.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
