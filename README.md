@@ -40,11 +40,11 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.2.3/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.3.0/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
 
-*Note: the `v0.2.3` release of the kubemark provider has been tested with the `v0.4.\*` versions of Cluster API*
+*Note: the `v0.3.0` release of the kubemark provider has been tested with the `v0.1.\*` versions of Cluster API*
 
 For demonstration purposes, we'll use the [CAPD][capd] provider. Other
 providers will also work, but CAPD is supported with a custom
