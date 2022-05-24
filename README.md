@@ -33,6 +33,11 @@ pretend to run pods scheduled to them. For more information on Kubemark, the
 [Kubemark developer guide][kubemark_docs] has more details.
 
 ## Getting started
+
+**Prerequisites**
+* Ubuntu Server 22.04
+* clusterctl v1.1.4
+
 At this point the Kubemark provider is extremely alpha. To deploy the Kubemark
 provider, you can add the latest release to your clusterctl config file, by
 default located at `~/.cluster-api/clusterctl.yaml`.
@@ -40,11 +45,9 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.3.0/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.3.1/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
-
-*Note: the `v0.3.0` release of the kubemark provider has been tested with the `v0.1.\*` versions of Cluster API*
 
 For demonstration purposes, we'll use the [CAPD][capd] provider. Other
 providers will also work, but CAPD is supported with a custom
@@ -61,16 +64,24 @@ Once initialized, you'll need to deploy your workload cluster using the `capd`
 flavor to get a hybrid CAPD/CAPK cluster:
 
 ```bash
-clusterctl config cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.21.1 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
+export SERVICE_CIDR="172.17.0.0/16"
+export POD_CIDR="192.168.122.0/24"
+clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.23.6 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
+*Note: these CIDR values are specific to Ubuntu Server 22.04*
+
 You should see your cluster come up and quickly become available with 4 Kubemark machines connected to your CAPD control plane.
+
+To bring all the cluster nodes into a ready state you will need to deploy a CNI
+solution into the kubemark cluster. Please see the [Cluster API Book](https://cluster-api.sigs.k8s.io/user/quick-start.html?highlight=cni#deploy-a-cni-solution)
+for more information.
 
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl config cluster wow --infrastructure aws      --kubernetes-version 1.21.1 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl config cluster wow --infrastructure kubemark --kubernetes-version 1.21.1 --worker-machine-count=4        | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.23.6 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.23.6 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
