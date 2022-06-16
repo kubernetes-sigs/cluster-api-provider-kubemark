@@ -75,10 +75,11 @@ func main() {
 	}
 	ctx := ctrl.SetupSignalHandler()
 	if err = (&controllers.KubemarkMachineReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("KubemarkMachine"),
-		Scheme:        mgr.GetScheme(),
-		KubemarkImage: kubemarkImage,
+		Client:          mgr.GetClient(),
+		KubemarkCluster: controllers.NewKubemarkCluster(mgr.GetClient()),
+		Log:             ctrl.Log.WithName("controllers").WithName("KubemarkMachine"),
+		Scheme:          mgr.GetScheme(),
+		KubemarkImage:   kubemarkImage,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KubemarkMachine")
 		os.Exit(1)

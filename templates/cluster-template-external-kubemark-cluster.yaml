@@ -1,0 +1,68 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-kubemark-external-md-0"
+  namespace: default
+  annotations:
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "5"
+spec:
+  clusterName: ${CLUSTER_NAME}
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
+      cluster.x-k8s.io/deployment-name: "${CLUSTER_NAME}-kubemark-external-md-0"
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
+        cluster.x-k8s.io/deployment-name: "${CLUSTER_NAME}-kubemark-external-md-0"
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: "${CLUSTER_NAME}-kubemark-external-md-0"
+      clusterName: "${CLUSTER_NAME}"
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+        kind: KubemarkMachineTemplate
+        name: "${CLUSTER_NAME}-kubemark-external-md-0"
+      version: "${KUBERNETES_VERSION}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+kind: KubemarkMachineTemplate
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
+  name: "${CLUSTER_NAME}-kubemark-external-md-0"
+  namespace: default
+spec:
+  template:
+    spec:
+      extraMounts:
+        # The following will mount the host's containerd socket into the kubemark nodes.
+        # This is being added to alleviate an issue with kubemark nodes not being able to
+        # start pods that are scheduled to them. for more information, please see
+        # https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/issues/22
+        - name: "containerd-sock"
+          containerPath: "/run/containerd/containerd.sock"
+          hostPath: "/run/containerd/containerd.sock"
+          type: "Socket"
+      kubemarkHollowPodClusterSecretRef:
+        apiVersion: v1
+        kind: Secret
+        name: kubemark-cluster-kubeconfig
+        namespace: capk-system
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-kubemark-external-md-0"
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          name: '{{ ds.meta_data.local_hostname }}'

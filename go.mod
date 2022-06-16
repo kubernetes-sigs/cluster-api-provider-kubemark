@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/go-logr/logr v0.4.0
+	github.com/pkg/errors v0.9.1 // indirect
 	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.22.0-alpha.0.0.20210417144234-8daf28983e6e
 	k8s.io/client-go v0.21.3

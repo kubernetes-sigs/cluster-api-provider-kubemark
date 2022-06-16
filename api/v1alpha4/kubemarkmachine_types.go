@@ -47,6 +47,9 @@ type KubemarkMachineSpec struct {
 	// will be passed to the `kubemark` binary.
 	// +optional
 	KubemarkOptions KubemarkProcessOptions `json:"kubemarkOptions,omitempty"`
+
+	// KubemarkHollowPodClusterSecretRef is a reference to a secret with a kubeconfig for an external cluster used for kubemark pods.
+	KubemarkHollowPodClusterSecretRef *corev1.ObjectReference `json:"kubemarkHollowPodClusterSecretRef,omitempty"`
 }
 
 // Mount specifies a host volume to mount into a container.
