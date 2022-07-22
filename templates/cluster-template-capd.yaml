@@ -46,11 +46,12 @@ metadata:
   namespace: "${NAMESPACE}"
 spec:
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
-  infrastructureTemplate:
-    kind: DockerMachineTemplate
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    name: "${CLUSTER_NAME}-control-plane"
-    namespace: "${NAMESPACE}"
+  machineTemplate:
+    infrastructureRef:
+      kind: DockerMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      name: "${CLUSTER_NAME}-control-plane"
+      namespace: "${NAMESPACE}"
   kubeadmConfigSpec:
     clusterConfiguration:
       controllerManager:
@@ -60,11 +61,15 @@ spec:
     initConfiguration:
       nodeRegistration:
         criSocket: /var/run/containerd/containerd.sock
-        kubeletExtraArgs: {eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'}
+        kubeletExtraArgs:
+          cgroup-driver: cgroupfs
+          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
     joinConfiguration:
       nodeRegistration:
         criSocket: /var/run/containerd/containerd.sock
-        kubeletExtraArgs: {eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'}
+        kubeletExtraArgs:
+          cgroup-driver: cgroupfs
+          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
   version: "${KUBERNETES_VERSION}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -109,7 +114,12 @@ metadata:
   namespace: default
 spec:
   template:
-    spec: {}
+    spec:
+      extraMounts:
+        - name: containerd-sock
+          containerPath: /run/containerd/containerd.sock
+          hostPath: /run/containerd/containerd.sock
+          type: Socket
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
