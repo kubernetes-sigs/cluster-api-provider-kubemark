@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,9 +52,11 @@ func init() {
 
 func main() {
 	var metricsAddr string
+	var profilerAddr string
 	var enableLeaderElection bool
 	var kubemarkImage string
 	flag.StringVar(&metricsAddr, "metrics-bind-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&profilerAddr, "profiler-address", "", "Bind address to expose the pprof profiler (e.g. localhost:6060)")
 	// TODO (elmiko) update the following default image link when we have a home for the kubemark images
 	flag.StringVar(&kubemarkImage, "kubemark-image", "quay.io/elmiko/kubemark", "The location of the kubemark image")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -61,6 +65,13 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(klogr.New())
+
+	if profilerAddr != "" {
+		klog.Infof("Profiler listening for requests at %s", profilerAddr)
+		go func() {
+			klog.Info(http.ListenAndServe(profilerAddr, nil))
+		}()
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
