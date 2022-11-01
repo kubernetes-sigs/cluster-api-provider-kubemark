@@ -23,7 +23,7 @@ KIND_CLUSTER_OPTS="--name ${KIND_CLUSTER_NAME}"
 if [ -n "${KIND_CLUSTER_IMAGE}" ]; then
   KIND_CLUSTER_OPTS="${KIND_CLUSTER_OPTS} --image ${KIND_CLUSTER_IMAGE}"
 else
-  KIND_CLUSTER_OPTS="${KIND_CLUSTER_OPTS} --image docker.io/kindest/node:v1.21.10"
+  KIND_CLUSTER_OPTS="${KIND_CLUSTER_OPTS} --image docker.io/kindest/node:v1.25.3"
 fi
 kind_version=$(kind version)
 kind_network='kind'
