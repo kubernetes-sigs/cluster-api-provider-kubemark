@@ -77,6 +77,7 @@ func main() {
 		v, err := semver.NewVersion(t)
 		if err != nil {
 			log.Printf("err parsing %s, %v", t, err)
+			continue
 		}
 		if constraint.Check(v) {
 			exists, err := p.imageExists(v)
