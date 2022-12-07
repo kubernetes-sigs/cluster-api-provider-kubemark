@@ -130,6 +130,10 @@ spec:
                       v1.22+. Defaults to {"cpu": "1", "memory": "4G"}'
                     type: object
                 type: object
+              providerID:
+                description: ProviderID will be the kubemark pod name in ProviderID
+                  format (kubemark:////<podname>)
+                type: string
             type: object
           status:
             description: KubemarkMachineStatus defines the observed state of KubemarkMachine

@@ -38,6 +38,10 @@ const (
 
 // KubemarkMachineSpec defines the desired state of KubemarkMachine
 type KubemarkMachineSpec struct {
+	// ProviderID will be the kubemark pod name in ProviderID format (kubemark:////<podname>)
+	// +optional
+	ProviderID *string `json:"providerID,omitempty"`
+
 	// ExtraMounts describes additional mount points for the node container
 	// These may be used to bind a hostPath
 	// +optional

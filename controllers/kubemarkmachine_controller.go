@@ -33,7 +33,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -57,6 +56,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
@@ -408,8 +409,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return ctrl.Result{}, err
 		}
 	}
-
-	machine.Spec.ProviderID = pointer.StringPtr(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	providerID := pointer.String(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	machine.Spec.ProviderID = providerID
+	kubemarkMachine.Spec.ProviderID = providerID
 	kubemarkMachine.Status.Ready = true
 
 	return ctrl.Result{}, nil
