@@ -409,8 +409,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return ctrl.Result{}, err
 		}
 	}
-
-	machine.Spec.ProviderID = pointer.StringPtr(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	providerID := pointer.String(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	machine.Spec.ProviderID = providerID
+	kubemarkMachine.Spec.ProviderID = providerID
 	kubemarkMachine.Status.Ready = true
 
 	return ctrl.Result{}, nil

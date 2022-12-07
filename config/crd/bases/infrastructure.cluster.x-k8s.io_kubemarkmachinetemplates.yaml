@@ -144,6 +144,10 @@ spec:
                               "1", "memory": "4G"}'
                             type: object
                         type: object
+                      providerID:
+                        description: ProviderID will be the kubemark pod name in ProviderID
+                          format (kubemark:////<podname>)
+                        type: string
                     type: object
                 required:
                 - spec
