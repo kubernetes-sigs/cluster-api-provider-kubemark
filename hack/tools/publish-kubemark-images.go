@@ -77,6 +77,7 @@ func main() {
 		v, err := semver.NewVersion(t)
 		if err != nil {
 			log.Printf("err parsing %s, %v", t, err)
+			continue
 		}
 		if constraint.Check(v) {
 			exists, err := p.imageExists(v)
@@ -84,16 +85,16 @@ func main() {
 				log.Fatalf("err checking if image exists for %v: %v", v, err)
 			}
 			if exists {
-				log.Printf("skipping version %s, image already exists", v.Original())
-				continue
+				log.Printf("skipping build for version %s, image already exists", v.Original())
+			} else {
+				if err := p.dockerBuild(v); err != nil {
+					log.Fatalf("err building docker image for %v: %v", v, err)
+				}
 			}
-			if err := p.dockerBuild(v); err != nil {
-				log.Fatalf("err building docker image for %v: %v", v, err)
+			if err := p.dockerPush(v); err != nil {
+				log.Fatalf("err pushing docker image: %v", err)
 			}
 		}
-	}
-	if err := p.dockerPush(); err != nil {
-		log.Fatalf("err pushing docker image: %v", err)
 	}
 }
 
@@ -136,11 +137,11 @@ func (p *PublishImages) dockerBuild(v *semver.Version) error {
 	return cmd.Run()
 }
 
-func (p *PublishImages) dockerPush() error {
+func (p *PublishImages) dockerPush(v *semver.Version) error {
 	if !p.Push {
 		return nil
 	}
-	cmd := exec.Command("docker", "push", p.ImageName)
+	cmd := exec.Command("docker", "push", fmt.Sprintf("%s:%s", p.ImageName, v.Original()))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -152,7 +153,7 @@ func (p *PublishImages) imageExists(v *semver.Version) (bool, error) {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			if exitError.ExitCode() == 1 {
+			if exitError.ExitCode() == 1 || exitError.ExitCode() == 125 {
 				return false, nil
 			}
 		}
