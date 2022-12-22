@@ -23,7 +23,10 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
+// KubemarkExtendedResourceName defines names for KubemarkExtendedResourceList.
 type KubemarkExtendedResourceName string
+
+// KubemarkExtendedResourceList defines a list of resources to be used in KubemarkProcessOptions.
 type KubemarkExtendedResourceList map[KubemarkExtendedResourceName]resource.Quantity
 
 const (
@@ -31,12 +34,14 @@ const (
 	// removing it from the apiserver.
 	MachineFinalizer = "kubemarkmachine.infrastructure.cluster.x-k8s.io"
 
-	// ExtendedResource types for KubemarkMachines
-	KubemarkExtendedResourceCPU    KubemarkExtendedResourceName = "cpu"
+	// KubemarkExtendedResourceCPU defines ExtendedResource type CPU for KubemarkMachines.
+	KubemarkExtendedResourceCPU KubemarkExtendedResourceName = "cpu"
+
+	// KubemarkExtendedResourceMemory defines ExtendedResource type memory for KubemarkMachines.
 	KubemarkExtendedResourceMemory KubemarkExtendedResourceName = "memory"
 )
 
-// KubemarkMachineSpec defines the desired state of KubemarkMachine
+// KubemarkMachineSpec defines the desired state of KubemarkMachine.
 type KubemarkMachineSpec struct {
 	// ProviderID will be the kubemark pod name in ProviderID format (kubemark:////<podname>)
 	// +optional
@@ -89,7 +94,7 @@ type KubemarkProcessOptions struct {
 	ExtendedResources KubemarkExtendedResourceList `json:"extendedResources,omitempty"`
 }
 
-// KubemarkMachineStatus defines the observed state of KubemarkMachine
+// KubemarkMachineStatus defines the observed state of KubemarkMachine.
 type KubemarkMachineStatus struct {
 	// Ready is true when the provider resource is ready.
 	// +optional
@@ -103,7 +108,7 @@ type KubemarkMachineStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:object:root=true
 
-// KubemarkMachine is the Schema for the kubemarkmachines API
+// KubemarkMachine is the Schema for the kubemarkmachines API.
 type KubemarkMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -112,17 +117,19 @@ type KubemarkMachine struct {
 	Status KubemarkMachineStatus `json:"status,omitempty"`
 }
 
+// GetConditions returns the set of conditions for this object.
 func (c *KubemarkMachine) GetConditions() clusterv1.Conditions {
 	return c.Status.Conditions
 }
 
+// SetConditions sets the conditions on this object.
 func (c *KubemarkMachine) SetConditions(conditions clusterv1.Conditions) {
 	c.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true
 
-// KubemarkMachineList contains a list of KubemarkMachine
+// KubemarkMachineList contains a list of KubemarkMachine.
 type KubemarkMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -31,9 +31,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,16 +56,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
 	kubemarkName = "hollow-node"
 
-	// MachineControllerName defines the user-agent name used when creating rest clients
+	// MachineControllerName defines the user-agent name used when creating rest clients.
 	MachineControllerName = "kubemarkmachine-controller"
 )
 
-// KubemarkMachineReconciler reconciles a KubemarkMachine object
+// KubemarkMachineReconciler reconciles a KubemarkMachine objects.
 type KubemarkMachineReconciler struct {
 	client.Client
 	KubemarkCluster KubemarkCluster
@@ -145,7 +146,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
 	if err != nil {
 		log.Info("Machine is missing cluster label or cluster does not exist")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 	log = log.WithValues("cluster", cluster.Name)
 	ctx = ctrl.LoggerInto(ctx, log)
@@ -182,7 +183,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
 		log.Info("deleting machine")
 
-		if err := kubemarkClusterClient.Delete(ctx, &v1.Pod{
+		if err := kubemarkClusterClient.Delete(ctx, &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
 				Namespace: kubemarkClusterNamespace,
@@ -193,7 +194,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				return ctrl.Result{}, err
 			}
 		}
-		if err := kubemarkClusterClient.Delete(ctx, &v1.Secret{
+		if err := kubemarkClusterClient.Delete(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
 				Namespace: kubemarkClusterNamespace,
@@ -240,7 +241,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	var caSecret v1.Secret
+	var caSecret corev1.Secret
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      secret.Name(cluster.Name, secret.ClusterCA),
 		Namespace: cluster.Namespace,
@@ -308,7 +309,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	secret := &v1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Namespace: kubemarkClusterNamespace,
@@ -354,55 +355,53 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		extendedResources := getKubemarkExtendedResources(kubemarkMachine.Spec.KubemarkOptions)
 		extendedResourcesFlag := getKubemarkExtendedResourcesFlag(extendedResources)
 		kubemarkArgs = append(kubemarkArgs, extendedResourcesFlag)
-	} else {
-		if kubemarkMachine.Spec.KubemarkOptions.ExtendedResources != nil {
-			err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
-			log.Error(err, "observed version: %s", *version)
-			return ctrl.Result{}, err
-		}
+	} else if kubemarkMachine.Spec.KubemarkOptions.ExtendedResources != nil {
+		err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
+		log.Error(err, "observed version: %s", *version)
+		return ctrl.Result{}, err
 	}
 
-	pod := &v1.Pod{
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Labels:    map[string]string{"app": kubemarkName},
 			Namespace: kubemarkClusterNamespace,
 		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
 				{
 					Name:    kubemarkName,
 					Image:   fmt.Sprintf("%s:%s", r.KubemarkImage, *version),
 					Args:    kubemarkArgs,
 					Command: []string{"/kubemark"},
-					SecurityContext: &v1.SecurityContext{
+					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
 					},
-					VolumeMounts: []v1.VolumeMount{
+					VolumeMounts: []corev1.VolumeMount{
 						{
 							MountPath: "/kubeconfig",
 							Name:      "kubeconfig",
 						},
 					},
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("40m"),
-							v1.ResourceMemory: resource.MustParse("10240Ki"),
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("40m"),
+							corev1.ResourceMemory: resource.MustParse("10240Ki"),
 						},
 					},
 				},
 			},
-			Tolerations: []v1.Toleration{
+			Tolerations: []corev1.Toleration{
 				{
 					Key:    "node-role.kubernetes.io/master",
-					Effect: v1.TaintEffectNoSchedule,
+					Effect: corev1.TaintEffectNoSchedule,
 				},
 			},
-			Volumes: []v1.Volume{
+			Volumes: []corev1.Volume{
 				{
 					Name: "kubeconfig",
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
 							SecretName: secret.Name,
 						},
 					},
@@ -415,7 +414,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		for i, c := range pod.Spec.Containers {
 			pod.Spec.Containers[i].VolumeMounts = append(
 				c.VolumeMounts,
-				v1.VolumeMount{
+				corev1.VolumeMount{
 					MountPath: v.ContainerPath,
 					Name:      v.Name,
 				})
@@ -423,10 +422,10 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 		pod.Spec.Volumes = append(
 			pod.Spec.Volumes,
-			v1.Volume{
+			corev1.Volume{
 				Name: v.Name,
-				VolumeSource: v1.VolumeSource{
-					HostPath: &v1.HostPathVolumeSource{
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
 						Path: v.HostPath,
 						Type: v.Type,
 					},
@@ -451,7 +450,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pemPath string) ([]byte, error) {
 	// Get the CA data from the bootstrap client config.
 	caFile, caData := bootstrapClientConfig.CAFile, []byte{}
-	if len(caFile) == 0 {
+	if caFile == "" {
 		caData = bootstrapClientConfig.CAData
 	}
 

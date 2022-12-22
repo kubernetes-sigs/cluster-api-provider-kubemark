@@ -20,7 +20,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: KubemarkMachineTemplate is the Schema for the kubemarkmachinetemplates
-          API
+          API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,11 +36,11 @@ spec:
             type: object
           spec:
             description: KubemarkMachineTemplateSpec defines the desired state of
-              KubemarkMachineTemplate
+              KubemarkMachineTemplate.
             properties:
               template:
                 description: KubemarkMachineTemplateResource describes the data needed
-                  to create am KubemarkMachine from a template
+                  to create am KubemarkMachine from a template.
                 properties:
                   spec:
                     description: Spec is the specification of the desired behavior
@@ -157,7 +157,7 @@ spec:
             type: object
           status:
             description: KubemarkMachineTemplateStatus defines the observed state
-              of KubemarkMachineTemplate
+              of KubemarkMachineTemplate.
             properties:
               capacity:
                 additionalProperties:

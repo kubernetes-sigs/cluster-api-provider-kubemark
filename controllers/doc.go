@@ -1,7 +1,5 @@
 /*
-Copyright 2014 The Kubernetes Authors.
-
-fail
+Copyright 2022 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package test contains test boilerplate.
-package test
+// Package controllers implements kubemark provider controllers.
+package controllers

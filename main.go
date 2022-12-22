@@ -25,8 +25,6 @@ import (
 	"os"
 	"time"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
-	"github.com/kubernetes-sigs/cluster-api-provider-kubemark/controllers"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -44,6 +42,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	"github.com/kubernetes-sigs/cluster-api-provider-kubemark/controllers"
 	// +kubebuilder:scaffold:imports
 )
 

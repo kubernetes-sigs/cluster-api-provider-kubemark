@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"reflect"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,8 +29,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
+// KubemarkMachineTemplateReconciler reconciles a KubemarkMachineTemplate objects.
 type KubemarkMachineTemplateReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme

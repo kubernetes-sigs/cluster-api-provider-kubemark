@@ -10,11 +10,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// KubemarkCluster defines a cluster hosting kubemark pods.
 type KubemarkCluster interface {
 	GenerateKubemarkClusterClient(kubemarkClusterSecretRef *corev1.ObjectReference, ownerNamespace string, context gocontext.Context) (client.Client, string, error)
 }
 
-// NewKubemarkCluster creates new KubemarkCluster instance
+// NewKubemarkCluster creates new KubemarkCluster instance.
 func NewKubemarkCluster(client client.Client) KubemarkCluster {
 	return &kubemarkCluster{
 		Client: client,
@@ -39,7 +40,7 @@ func (w *kubemarkCluster) GenerateKubemarkClusterClient(kubemarkClusterSecretRef
 
 	kubeConfig, ok := kubemarkClusterKubeconfigSecret.Data["kubeconfig"]
 	if !ok {
-		return nil, "", errors.New("Failed to retrieve kubemark cluster kubeconfig from secret: 'kubeconfig' key is missing.")
+		return nil, "", errors.New("failed to retrieve kubemark cluster kubeconfig from secret: 'kubeconfig' key is missing")
 	}
 
 	namespace := "default"
