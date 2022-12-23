@@ -25,7 +25,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -33,6 +32,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,11 +54,10 @@ import (
 	"sigs.k8s.io/cluster-api/util/secret"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
@@ -74,6 +74,38 @@ type KubemarkMachineReconciler struct {
 	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	KubemarkImage   string
+
+	// WatchFilterValue is the label value used to filter events prior to reconciliation.
+	WatchFilterValue string
+}
+
+func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	c, err := ctrl.NewControllerManagedBy(mgr).
+		For(&infrav1.KubemarkMachine{}).
+		WithOptions(options).
+		Watches(
+			&source.Kind{Type: &clusterv1.Machine{}},
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
+		).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		Build(r)
+	if err != nil {
+		return errors.Wrap(err, "failed setting up with a controller manager")
+	}
+
+	clusterToKubemarkMachines, err := util.ClusterToObjectsMapper(mgr.GetClient(), &infrav1.KubemarkMachineList{}, mgr.GetScheme())
+	if err != nil {
+		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
+	}
+	err = c.Watch(
+		&source.Kind{Type: &clusterv1.Cluster{}},
+		handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines),
+		predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed adding Watch for Clusters to KubemarkMachines")
+	}
+	return nil
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachines,verbs=get;list;watch;create;update;patch;delete
@@ -415,28 +447,6 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	kubemarkMachine.Status.Ready = true
 
 	return ctrl.Result{}, nil
-}
-
-func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	clusterToKubemarkMachines, err := util.ClusterToObjectsMapper(mgr.GetClient(), &infrav1.KubemarkMachineList{}, mgr.GetScheme())
-	if err != nil {
-		return err
-	}
-	c, err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrav1.KubemarkMachine{}).
-		Watches(
-			&source.Kind{Type: &clusterv1.Machine{}},
-			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
-		).
-		Build(r)
-	if err != nil {
-		return err
-	}
-	return c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines),
-		predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
-	)
 }
 
 func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pemPath string) ([]byte, error) {
