@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-logr/logr"
 	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +34,6 @@ import (
 
 type KubemarkMachineTemplateReconciler struct {
 	client.Client
-	Log    logr.Logger
 	Scheme *runtime.Scheme
 
 	// WatchFilterValue is the label value used to filter events prior to reconciliation.
@@ -54,12 +52,12 @@ func (r *KubemarkMachineTemplateReconciler) SetupWithManager(ctx context.Context
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachinetemplates/status,verbs=get;update;patch
 
 func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Log.WithValues("kubemarkmachinetemplate", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx).WithValues("kubemarkmachinetemplate", req.NamespacedName)
 	updateRequired := false
 
 	var machineTemplate infrav1.KubemarkMachineTemplate
 	if err := r.Get(ctx, req.NamespacedName, &machineTemplate); err != nil {
-		logger.Error(err, "unable to fetch KubemarkMachineTemplate")
+		log.Error(err, "unable to fetch KubemarkMachineTemplate")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -84,7 +82,7 @@ func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req c
 	if updateRequired {
 		if err := helper.Patch(ctx, &machineTemplate); err != nil {
 			if !apierrors.IsNotFound(err) {
-				logger.Error(err, "failed to patch machineTemplate")
+				log.Error(err, "failed to patch machineTemplate")
 				return ctrl.Result{}, err
 			}
 		}

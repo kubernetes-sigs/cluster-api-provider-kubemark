@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/go-logr/logr v1.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.25.0
@@ -25,6 +24,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect

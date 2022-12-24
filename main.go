@@ -197,7 +197,6 @@ func main() {
 	if err = (&controllers.KubemarkMachineReconciler{
 		Client:           mgr.GetClient(),
 		KubemarkCluster:  controllers.NewKubemarkCluster(mgr.GetClient()),
-		Log:              ctrl.Log.WithName("controllers").WithName("KubemarkMachine"),
 		Scheme:           mgr.GetScheme(),
 		KubemarkImage:    kubemarkImage,
 		WatchFilterValue: watchFilterValue,
@@ -207,7 +206,6 @@ func main() {
 	}
 	if err = (&controllers.KubemarkMachineTemplateReconciler{
 		Client:           mgr.GetClient(),
-		Log:              ctrl.Log.WithName("controllers").WithName("KubemarkMachineTemplate"),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilterValue,
 	}).SetupWithManager(ctx, mgr, concurrency(kubemarkMachineTemplateConcurrency)); err != nil {
