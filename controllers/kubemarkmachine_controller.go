@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/go-logr/logr"
 	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -71,7 +70,6 @@ const (
 type KubemarkMachineReconciler struct {
 	client.Client
 	KubemarkCluster KubemarkCluster
-	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	KubemarkImage   string
 
@@ -118,7 +116,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete
 
 func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Log.WithValues("kubemarkmachine", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx).WithValues("kubemarkmachine", req.NamespacedName)
 
 	kubemarkMachine := &infrav1.KubemarkMachine{}
 	err := r.Get(ctx, req.NamespacedName, kubemarkMachine)
@@ -126,9 +124,32 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "error finding kubemark machine")
+		log.Error(err, "error finding kubemark machine")
 		return ctrl.Result{}, err
 	}
+
+	// Fetch the Machine.
+	machine, err := util.GetOwnerMachine(ctx, r.Client, kubemarkMachine.ObjectMeta)
+	if err != nil {
+		log.Error(err, "error finding owner machine")
+		return ctrl.Result{}, err
+	}
+	if machine == nil {
+		log.Info("Machine Controller has not yet set OwnerRef")
+		return ctrl.Result{}, nil
+	}
+
+	log = log.WithValues("machine", machine.Name)
+
+	// Fetch the Cluster.
+	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
+	if err != nil {
+		log.Info("Machine is missing cluster label or cluster does not exist")
+		return ctrl.Result{}, nil
+	}
+	log = log.WithValues("cluster", cluster.Name)
+	ctx = ctrl.LoggerInto(ctx, log)
+
 	helper, err := patch.NewHelper(kubemarkMachine, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
@@ -136,14 +157,14 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	controllerutil.AddFinalizer(kubemarkMachine, infrav1.MachineFinalizer)
 	if err := helper.Patch(ctx, kubemarkMachine); err != nil {
-		logger.Error(err, "failed to add finalizer")
+		log.Error(err, "failed to add finalizer")
 		return ctrl.Result{}, err
 	}
 
 	defer func() {
 		if err := helper.Patch(ctx, kubemarkMachine); err != nil {
 			if !apierrors.IsNotFound(err) {
-				logger.Error(err, "failed to patch kubemarkMachine")
+				log.Error(err, "failed to patch kubemarkMachine")
 			}
 		}
 	}()
@@ -154,12 +175,12 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if kubemarkClusterClient == nil {
-		logger.Info("Waiting for kubemark cluster client...")
+		log.Info("Waiting for kubemark cluster client...")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
-		logger.Info("deleting machine")
+		log.Info("deleting machine")
 
 		if err := kubemarkClusterClient.Delete(ctx, &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -168,7 +189,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
-				logger.Error(err, "error deleting kubemark pod")
+				log.Error(err, "error deleting kubemark pod")
 				return ctrl.Result{}, err
 			}
 		}
@@ -179,7 +200,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
-				logger.Error(err, "error deleting kubemark configMap")
+				log.Error(err, "error deleting kubemark configMap")
 				return ctrl.Result{}, err
 			}
 		}
@@ -188,20 +209,10 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if kubemarkMachine.Status.Ready {
-		logger.Info("machine already ready, skipping reconcile")
+		log.Info("machine already ready, skipping reconcile")
 		return ctrl.Result{}, err
 	}
 
-	// Fetch the Machine.
-	machine, err := util.GetOwnerMachine(ctx, r.Client, kubemarkMachine.ObjectMeta)
-	if err != nil {
-		logger.Error(err, "error finding owner machine")
-		return ctrl.Result{}, err
-	}
-	if machine == nil {
-		logger.Info("Machine Controller has not yet set OwnerRef")
-		return ctrl.Result{}, nil
-	}
 	machinePatchHelper, err := patch.NewHelper(machine, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
@@ -209,33 +220,23 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	defer func() {
 		if err := machinePatchHelper.Patch(ctx, machine); err != nil {
 			if !apierrors.IsNotFound(err) {
-				logger.Error(err, "failed to patch machine")
+				log.Error(err, "failed to patch machine")
 			}
 		}
 	}()
 
-	logger = logger.WithValues("machine", machine.Name)
-
-	// Fetch the Cluster.
-	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
+	restConfig, err := getRemoteCluster(ctx, r.Client, cluster)
 	if err != nil {
-		logger.Info("Machine is missing cluster label or cluster does not exist")
-		return ctrl.Result{}, nil
-	}
-	logger = logger.WithValues("cluster", cluster.Name)
-
-	restConfig, err := getRemoteCluster(ctx, logger, r.Client, cluster)
-	if err != nil {
-		logger.Error(err, "error getting remote cluster")
+		log.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
 	}
 
 	if !cluster.Status.InfrastructureReady {
-		logger.Info("Cluster infrastructure is not ready yet")
+		log.Info("Cluster infrastructure is not ready yet")
 		return ctrl.Result{}, nil
 	}
 	if machine.Spec.Bootstrap.DataSecretName == nil {
-		logger.Info("Bootstrap data secret reference is not yet available")
+		log.Info("Bootstrap data secret reference is not yet available")
 		return ctrl.Result{}, nil
 	}
 
@@ -244,30 +245,30 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		Name:      secret.Name(cluster.Name, secret.ClusterCA),
 		Namespace: cluster.Namespace,
 	}, &caSecret); err != nil {
-		logger.Error(err, "error getting cluster CA secret")
+		log.Error(err, "error getting cluster CA secret")
 		return ctrl.Result{}, err
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	if err != nil {
-		logger.Error(err, "failed to generate private key")
+		log.Error(err, "failed to generate private key")
 		return ctrl.Result{}, err
 	}
 	der, err := x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
-		logger.Error(err, "failed to marshal the private key to DER")
+		log.Error(err, "failed to marshal the private key to DER")
 		return ctrl.Result{}, err
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: keyutil.ECPrivateKeyBlockType, Bytes: der})
 
 	caCert, err := certs.DecodeCertPEM(caSecret.Data[secret.TLSCrtDataName])
 	if err != nil {
-		logger.Error(err, "failed to decode ca certificate")
+		log.Error(err, "failed to decode ca certificate")
 		return ctrl.Result{}, err
 	}
 	caKey, err := certs.DecodePrivateKeyPEM(caSecret.Data[secret.TLSKeyDataName])
 	if err != nil {
-		logger.Error(err, "err decoding ca private key")
+		log.Error(err, "err decoding ca private key")
 		return ctrl.Result{}, err
 	}
 
@@ -287,23 +288,23 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	certBytes, err := x509.CreateCertificate(cryptorand.Reader, kubeletCert, caCert, &privateKey.PublicKey, caKey)
 	if err != nil {
-		logger.Error(err, "err creating kubelet certificate")
+		log.Error(err, "err creating kubelet certificate")
 		return ctrl.Result{}, err
 	}
 
 	kubeconfig, err := generateCertificateKubeconfig(restConfig, "/kubeconfig/cert.pem")
 	if err != nil {
-		logger.Error(err, "err generating certificate kubeconfig")
+		log.Error(err, "err generating certificate kubeconfig")
 		return ctrl.Result{}, err
 	}
 
 	stackedCert := bytes.Buffer{}
 	if err := pem.Encode(&stackedCert, &pem.Block{Type: cert.CertificateBlockType, Bytes: certBytes}); err != nil {
-		logger.Error(err, "err encoding certificate")
+		log.Error(err, "err encoding certificate")
 		return ctrl.Result{}, err
 	}
 	if _, err := stackedCert.Write(keyPEM); err != nil {
-		logger.Error(err, "err writing pem bytes")
+		log.Error(err, "err writing pem bytes")
 		return ctrl.Result{}, err
 	}
 
@@ -319,14 +320,14 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	if err := kubemarkClusterClient.Create(ctx, secret); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			logger.Error(err, "failed to create secret")
+			log.Error(err, "failed to create secret")
 			return ctrl.Result{}, err
 		}
 	}
 	version := machine.Spec.Version
 	if version == nil {
 		err := errors.New("Machine has no spec.version")
-		logger.Error(err, "")
+		log.Error(err, "")
 		return ctrl.Result{}, err
 	}
 
@@ -342,12 +343,12 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// TODO remove the version check once 1.22.0 is no longer supported.
 	c, err := semver.NewConstraint(">= 1.22.0")
 	if err != nil {
-		logger.Error(err, "Unable to create version constraint")
+		log.Error(err, "Unable to create version constraint")
 		return ctrl.Result{}, err
 	}
 	v, err := semver.NewVersion(*version)
 	if err != nil {
-		logger.Error(err, "Unable to create version constraint")
+		log.Error(err, "Unable to create version constraint")
 		return ctrl.Result{}, err
 	}
 
@@ -358,7 +359,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	} else {
 		if kubemarkMachine.Spec.KubemarkOptions.ExtendedResources != nil {
 			err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
-			logger.Error(err, "observed version: %s", *version)
+			log.Error(err, "observed version: %s", *version)
 			return ctrl.Result{}, err
 		}
 	}
@@ -437,7 +438,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if err = kubemarkClusterClient.Create(ctx, pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			logger.Error(err, "failed to create pod")
+			log.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
 		}
 	}
@@ -483,10 +484,12 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 	return runtime.Encode(clientcmdlatest.Codec, kubeconfigData)
 }
 
-func getRemoteCluster(ctx context.Context, logger logr.Logger, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
+func getRemoteCluster(ctx context.Context, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
+	log := ctrl.LoggerFrom(ctx)
+
 	restConfig, err := remote.RESTConfig(ctx, MachineControllerName, mgmtClient, util.ObjectKey(cluster))
 	if err != nil {
-		logger.Error(err, "error getting restconfig")
+		log.Error(err, "error getting restconfig")
 		return nil, err
 	}
 	restConfig.Timeout = 30 * time.Second
