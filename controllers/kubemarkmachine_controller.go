@@ -334,8 +334,6 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	kubemarkArgs := []string{
 		"--v=3",
 		"--morph=kubelet",
-		"--log-file=/var/log/kubelet.log",
-		"--logtostderr=false",
 		fmt.Sprintf("--name=%s", kubemarkMachine.Name),
 	}
 
