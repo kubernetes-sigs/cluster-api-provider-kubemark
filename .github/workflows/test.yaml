@@ -26,5 +26,6 @@ jobs:
     - uses: actions/checkout@v3
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
-      with: # TODO: remove this when the deprecated function will be removed (issue #85)
-        args: --exclude SA1019 --timeout=5m
+      with:
+        version: v1.48.0
+        working-directory: ${{matrix.working-directory}}
