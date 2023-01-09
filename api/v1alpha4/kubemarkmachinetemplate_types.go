@@ -24,18 +24,18 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// KubemarkMachineTemplateResource describes the data needed to create am KubemarkMachine from a template
+// KubemarkMachineTemplateResource describes the data needed to create am KubemarkMachine from a template.
 type KubemarkMachineTemplateResource struct {
 	// Spec is the specification of the desired behavior of the machine.
 	Spec KubemarkMachineSpec `json:"spec"`
 }
 
-// KubemarkMachineTemplateSpec defines the desired state of KubemarkMachineTemplate
+// KubemarkMachineTemplateSpec defines the desired state of KubemarkMachineTemplate.
 type KubemarkMachineTemplateSpec struct {
 	Template KubemarkMachineTemplateResource `json:"template"`
 }
 
-// KubemarkMachineTemplateStatus defines the observed state of KubemarkMachineTemplate
+// KubemarkMachineTemplateStatus defines the observed state of KubemarkMachineTemplate.
 type KubemarkMachineTemplateStatus struct {
 	// Capacity defines the resource capacity for this machine.
 	// This value is used for autoscaling from zero operations as defined in:
@@ -47,7 +47,7 @@ type KubemarkMachineTemplateStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:object:root=true
 
-// KubemarkMachineTemplate is the Schema for the kubemarkmachinetemplates API
+// KubemarkMachineTemplate is the Schema for the kubemarkmachinetemplates API.
 type KubemarkMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -58,7 +58,7 @@ type KubemarkMachineTemplate struct {
 
 // +kubebuilder:object:root=true
 
-// KubemarkMachineTemplateList contains a list of KubemarkMachineTemplate
+// KubemarkMachineTemplateList contains a list of KubemarkMachineTemplate.
 type KubemarkMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -22,8 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
@@ -91,7 +93,7 @@ func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
 	}
 
 	if !strings.HasPrefix(flags, kubemarkExtendedResourcesFlag) {
-		return nil, fmt.Errorf(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags))
+		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags))
 	}
 
 	ret := map[string]string{}
@@ -101,7 +103,7 @@ func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
 		// split the resource string into its key and value
 		rsplit := strings.Split(r, "=")
 		if len(rsplit) != 2 {
-			return nil, fmt.Errorf(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
+			return nil, errors.New(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
 		}
 		ret[rsplit[0]] = rsplit[1]
 	}

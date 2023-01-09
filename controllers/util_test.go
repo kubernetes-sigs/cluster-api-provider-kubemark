@@ -20,8 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 func TestGetKubemarkExtendedResources(t *testing.T) {
@@ -94,7 +95,7 @@ func TestGetKubemarkExtendedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			observed := getKubemarkExtendedResources(tt.resources)
-			if reflect.DeepEqual(observed, tt.expected) != true {
+			if !reflect.DeepEqual(observed, tt.expected) {
 				t.Errorf("unexpected mismatch, observed %v, expected %v", observed, tt.expected)
 			}
 		})

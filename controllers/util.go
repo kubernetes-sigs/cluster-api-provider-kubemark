@@ -17,14 +17,15 @@ limitations under the License.
 package controllers
 
 import (
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
-	// DefaultCPUResource is the default cpu capacity when none is specified (k8s 1.22+)
+	// DefaultCPUResource is the default cpu capacity when none is specified (k8s 1.22+).
 	DefaultCPUResource = "1"
-	// DefaultMemResource is the default memory capacity when none is specified (k8s 1.22+)
+	// DefaultMemResource is the default memory capacity when none is specified (k8s 1.22+).
 	DefaultMemResource = "4G"
 )
 
