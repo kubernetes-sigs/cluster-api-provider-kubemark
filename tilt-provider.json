@@ -9,7 +9,6 @@
         "go.sum",
         "api",
         "controllers"
-
       ],
       "label": "CAPK"
     }

@@ -46,6 +46,33 @@ spec:
                     description: Spec is the specification of the desired behavior
                       of the machine.
                     properties:
+                      computeCluster:
+                        description: ComputeCluster defines the cluster where to host
+                          the pod running kubemark. If empty, pods running kubemark
+                          will be created in the current management cluster.
+                        properties:
+                          namespace:
+                            description: 'Namespace defines namespace where to host
+                              pods running kubemark in the ComputeCluster. If empty
+                              the namespace of the kubeconfig will be used as a default.
+                              Note: it is not supported using the same backing namespace
+                              for two clusters with the same name.'
+                            type: string
+                          secretRef:
+                            description: 'SecretRef is the reference to an existing
+                              secret with a `kubeconfig` value providing the kubeconfig
+                              for accessing to the ComputeCluster. NOTE: The secret
+                              needs to be created for the controller to find it. TODO:
+                              validation (mandatory if ComputeClusterSpec is defined;
+                              cannot be changed if the KubemarkCluster is ready)'
+                            properties:
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind,
+                                  uid?'
+                                type: string
+                            type: object
+                        type: object
                       extraMounts:
                         description: ExtraMounts describes additional mount points
                           for the node container These may be used to bind a hostPath
@@ -88,9 +115,10 @@ spec:
                           type: object
                         type: array
                       kubemarkHollowPodClusterSecretRef:
-                        description: KubemarkHollowPodClusterSecretRef is a reference
+                        description: 'KubemarkHollowPodClusterSecretRef is a reference
                           to a secret with a kubeconfig for an external cluster used
-                          for kubemark pods.
+                          for kubemark pods. Deprecated: use BackingCluster instead;
+                          if both are defined, BackingCluster takes the precedence.'
                         properties:
                           apiVersion:
                             description: API version of the referent.

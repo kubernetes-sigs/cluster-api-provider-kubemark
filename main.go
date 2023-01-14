@@ -64,23 +64,27 @@ func init() {
 }
 
 var (
-	metricsBindAddr                    string
-	enableLeaderElection               bool
-	leaderElectionLeaseDuration        time.Duration
-	leaderElectionRenewDeadline        time.Duration
-	leaderElectionRetryPeriod          time.Duration
-	watchFilterValue                   string
-	watchNamespace                     string
-	profilerAddress                    string
-	kubemarkMachineConcurrency         int
-	kubemarkMachineTemplateConcurrency int
-	syncPeriod                         time.Duration
-	webhookPort                        int
-	webhookCertDir                     string
-	healthAddr                         string
-	kubemarkImage                      string
-	tlsOptions                         = flags.TLSOptions{}
-	logOptions                         = logs.NewOptions()
+	metricsBindAddr                         string
+	enableLeaderElection                    bool
+	leaderElectionLeaseDuration             time.Duration
+	leaderElectionRenewDeadline             time.Duration
+	leaderElectionRetryPeriod               time.Duration
+	watchFilterValue                        string
+	watchNamespace                          string
+	profilerAddress                         string
+	kubemarkMachineConcurrency              int
+	kubemarkMachineTemplateConcurrency      int
+	kubemarkClusterConcurrency              int
+	kubemarkClusterTemplateConcurrency      int
+	kubemarkControlPlaneConcurrency         int
+	kubemarkControlPlaneTemplateConcurrency int
+	syncPeriod                              time.Duration
+	webhookPort                             int
+	webhookCertDir                          string
+	healthAddr                              string
+	kubemarkImage                           string
+	tlsOptions                              = flags.TLSOptions{}
+	logOptions                              = logs.NewOptions()
 )
 
 // InitFlags initializes the flags.
@@ -114,6 +118,18 @@ func InitFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&kubemarkMachineTemplateConcurrency, "kubemarkmachineTemplateconcurrency", 10,
 		"Number of KubemarkMachineTemplates to process simultaneously")
+
+	fs.IntVar(&kubemarkClusterConcurrency, "kubemarkcluster-concurrency", 10,
+		"Number of KubemarkCluster to process simultaneously")
+
+	fs.IntVar(&kubemarkClusterTemplateConcurrency, "kubemarkclustertemplate-concurrency", 10,
+		"Number of KubemarkClusterTemplate to process simultaneously")
+
+	fs.IntVar(&kubemarkControlPlaneConcurrency, "kubemarkcontrolplane-concurrency", 10,
+		"Number of KubemarkControlPlane to process simultaneously")
+
+	fs.IntVar(&kubemarkControlPlaneTemplateConcurrency, "kubemarkcontrolplanetemplate-concurrency", 10,
+		"Number of KubemarkControlPlaneTemplate to process simultaneously")
 
 	fs.DurationVar(&syncPeriod, "sync-period", 10*time.Minute,
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
@@ -195,17 +211,21 @@ func main() {
 
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
-	if err = (&controllers.KubemarkMachineReconciler{
-		Client:           mgr.GetClient(),
-		KubemarkCluster:  controllers.NewKubemarkCluster(mgr.GetClient()),
-		Scheme:           mgr.GetScheme(),
-		KubemarkImage:    kubemarkImage,
-		WatchFilterValue: watchFilterValue,
+
+	// Setup the ComputeClusterTracker that's going to manage connection to the ComputeClusters.
+	computeClusterTracker := controllers.NewComputeClusterTracker(mgr)
+
+	if err := (&controllers.KubemarkMachineReconciler{
+		Client:                mgr.GetClient(),
+		ComputeClusterTracker: computeClusterTracker,
+		Scheme:                mgr.GetScheme(),
+		KubemarkImage:         kubemarkImage,
+		WatchFilterValue:      watchFilterValue,
 	}).SetupWithManager(ctx, mgr, concurrency(kubemarkMachineConcurrency)); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KubemarkMachine")
 		os.Exit(1)
 	}
-	if err = (&controllers.KubemarkMachineTemplateReconciler{
+	if err := (&controllers.KubemarkMachineTemplateReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilterValue,

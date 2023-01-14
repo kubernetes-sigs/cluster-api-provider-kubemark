@@ -42,6 +42,7 @@ import (
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
@@ -70,9 +71,9 @@ const (
 // KubemarkMachineReconciler reconciles a KubemarkMachine objects.
 type KubemarkMachineReconciler struct {
 	client.Client
-	KubemarkCluster KubemarkCluster
-	Scheme          *runtime.Scheme
-	KubemarkImage   string
+	ComputeClusterTracker *ComputeClusterTracker
+	Scheme                *runtime.Scheme
+	KubemarkImage         string
 
 	// WatchFilterValue is the label value used to filter events prior to reconciliation.
 	WatchFilterValue string
@@ -111,9 +112,8 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kubemarkmachines/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=create;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=create;get;list;watch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete
 
 func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -132,23 +132,27 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// Fetch the Machine.
 	machine, err := util.GetOwnerMachine(ctx, r.Client, kubemarkMachine.ObjectMeta)
 	if err != nil {
-		log.Error(err, "error finding owner machine")
 		return ctrl.Result{}, err
 	}
 	if machine == nil {
-		log.Info("Machine Controller has not yet set OwnerRef")
+		log.Info("Waiting for Machine Controller to set OwnerRef on KubemarkMachine")
 		return ctrl.Result{}, nil
 	}
 
-	log = log.WithValues("machine", machine.Name)
+	log = log.WithValues("Machine", klog.KObj(machine))
 
 	// Fetch the Cluster.
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
 	if err != nil {
-		log.Info("Machine is missing cluster label or cluster does not exist")
+		log.Info("KubemarkMachine owner Machine is missing cluster label or cluster does not exist")
 		return ctrl.Result{}, err
 	}
-	log = log.WithValues("cluster", cluster.Name)
+	if cluster == nil {
+		log.Info(fmt.Sprintf("Please associate this machine with a cluster using the label %s: <name of cluster>", clusterv1.ClusterLabelName))
+		return ctrl.Result{}, nil
+	}
+
+	log = log.WithValues("Cluster", klog.KObj(cluster))
 	ctx = ctrl.LoggerInto(ctx, log)
 
 	helper, err := patch.NewHelper(kubemarkMachine, r.Client)
@@ -170,23 +174,18 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}()
 
-	kubemarkClusterClient, kubemarkClusterNamespace, err := r.KubemarkCluster.GenerateKubemarkClusterClient(kubemarkMachine.Spec.KubemarkHollowPodClusterSecretRef, kubemarkMachine.Namespace, ctx)
+	computeCluster, err := r.ComputeClusterTracker.GetFor(ctx, kubemarkMachine)
 	if err != nil {
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, err
-	}
-
-	if kubemarkClusterClient == nil {
-		log.Info("Waiting for kubemark cluster client...")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
 		log.Info("deleting machine")
 
-		if err := kubemarkClusterClient.Delete(ctx, &corev1.Pod{
+		if err := computeCluster.Delete(ctx, &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: kubemarkClusterNamespace,
+				Namespace: computeCluster.Namespace,
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -194,10 +193,10 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				return ctrl.Result{}, err
 			}
 		}
-		if err := kubemarkClusterClient.Delete(ctx, &corev1.Secret{
+		if err := computeCluster.Delete(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      kubemarkMachine.Name,
-				Namespace: kubemarkClusterNamespace,
+				Namespace: computeCluster.Namespace,
 			},
 		}); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -226,6 +225,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}()
 
+	// TODO: investigate this, why are we creating a remoteconfig?
 	restConfig, err := getRemoteCluster(ctx, r.Client, cluster)
 	if err != nil {
 		log.Error(err, "error getting remote cluster")
@@ -312,14 +312,14 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
-			Namespace: kubemarkClusterNamespace,
+			Namespace: computeCluster.Namespace,
 		},
 		Data: map[string][]byte{
 			"kubeconfig": kubeconfig,
 			"cert.pem":   stackedCert.Bytes(),
 		},
 	}
-	if err := kubemarkClusterClient.Create(ctx, secret); err != nil {
+	if err := computeCluster.Create(ctx, secret); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			log.Error(err, "failed to create secret")
 			return ctrl.Result{}, err
@@ -365,7 +365,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
 			Labels:    map[string]string{"app": kubemarkName},
-			Namespace: kubemarkClusterNamespace,
+			Namespace: computeCluster.Namespace,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -375,7 +375,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 					Args:    kubemarkArgs,
 					Command: []string{"/kubemark"},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: pointer.BoolPtr(true),
+						Privileged: pointer.Bool(true),
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -433,7 +433,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			})
 	}
 
-	if err = kubemarkClusterClient.Create(ctx, pod); err != nil {
+	if err = computeCluster.Create(ctx, pod); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			log.Error(err, "failed to create pod")
 			return ctrl.Result{}, err
