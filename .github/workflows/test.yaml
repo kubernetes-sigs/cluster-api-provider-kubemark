@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.19.x]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Install Go
@@ -20,12 +20,17 @@ jobs:
     - name: Build
       run: make manager
 
-  go-linter:
-    runs-on: ubuntu-latest
+  pr-verify:
+    strategy:
+      matrix:
+        go-version: [1.19.x]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+    - name: Install Go
+      uses: actions/setup-go@v3
       with:
-        version: v1.48.0
-        working-directory: ${{matrix.working-directory}}
+        go-version: ${{ matrix.go-version }} 
+    - uses: actions/checkout@v3
+    - name: verify
+      run: make verify

@@ -1,9 +1,6 @@
 #!/bin/sh
-#
-# Adapted from:
-# https://github.com/kubernetes-sigs/kind/commits/master/site/static/examples/kind-with-registry.sh
-#
-# Copyright 2021 The Kubernetes Project
+
+# Copyright 2021 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Adapted from:
+# https://github.com/kubernetes-sigs/kind/commits/master/site/static/examples/kind-with-registry.sh
+
 set -o errexit
 # desired cluster name; default is "kind"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-kind}"
