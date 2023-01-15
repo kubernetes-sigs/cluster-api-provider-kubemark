@@ -92,16 +92,17 @@ $(KUSTOMIZE): # Build kustomize from tools folder.
 ## Linting
 ## --------------------------------------
 
-.PHONY: lint lint-full
+.PHONY: lint
 lint: $(GOLANGCI_LINT) ## Lint codebase
-	$(GOLANGCI_LINT) run -v $(GOLANGCI_LINT_EXTRA_ARGS)
+	$(GOLANGCI_LINT) run -v --timeout=5m $(GOLANGCI_LINT_EXTRA_ARGS)
 
 .PHONY: lint-fix
 lint-fix: $(GOLANGCI_LINT) ## Lint the codebase and run auto-fixers if supported by the linter
 	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
 
+.PHONY: lint-full
 lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
-	$(GOLANGCI_LINT) run -v --fast=false
+	GOLANGCI_LINT_EXTRA_ARGS=--fast=false $(MAKE) lint
 
 ## --------------------------------------
 ## Generate / Manifests
@@ -255,21 +256,21 @@ clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
 .PHONY: verify
-verify: lint-full
+verify: lint-full ## Runs all the verifier
 	./hack/verify-boilerplate.sh
 	./hack/verify-shellcheck.sh
 	$(MAKE) verify-modules
 	$(MAKE) verify-gen
 
 .PHONY: verify-modules
-verify-modules: modules
+verify-modules: modules ## Verifies go modules are up to date
 	@if !(git diff --quiet HEAD -- go.sum go.mod hack/tools/go.mod hack/tools/go.sum); then \
 		git diff; \
 		echo "go module files are out of date"; exit 1; \
 	fi
 
 .PHONY: verify-gen
-verify-gen: generate
+verify-gen: generate ## Verifies generated files are up to date
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
 		echo "generated files are out of date, run make generate"; exit 1; \
