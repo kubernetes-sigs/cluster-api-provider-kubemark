@@ -115,8 +115,8 @@ spec:
     spec:
       extraMounts:
         - name: containerd-sock
-          containerPath: unix:///run/containerd/containerd.sock
-          hostPath: unix:///run/containerd/containerd.sock
+          containerPath: /run/containerd/containerd.sock
+          hostPath: /run/containerd/containerd.sock
           type: Socket
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
