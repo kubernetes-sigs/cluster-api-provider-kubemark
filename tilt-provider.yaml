@@ -1,0 +1,11 @@
+name: kubemark
+config:
+  version: v0.4.99
+  image: quay.io/cluster-api-provider-kubemark/cluster-api-kubemark-controller-amd64:latest
+  live_reload_deps:
+    - main.go
+    - go.mod
+    - go.sum
+    - api
+    - controllers
+  label: CAPK

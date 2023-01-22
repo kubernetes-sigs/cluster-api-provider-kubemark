@@ -60,3 +60,4 @@ junit.*.xml
 _artifacts
 awsiamconfiguration.yaml
 cloudformation.yaml
+/tmp/
