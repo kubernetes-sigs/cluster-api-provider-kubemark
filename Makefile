@@ -91,6 +91,7 @@ ARTIFACTS ?= ${ROOT_DIR}/_artifacts
 test: ## Run tests
 	go test -v ./...
 
+.PHONY: test-e2e
 test-e2e: ## Launch integration e2e test with building images (for local usage)
 	$(MAKE) -C hack/tests test-e2e
 

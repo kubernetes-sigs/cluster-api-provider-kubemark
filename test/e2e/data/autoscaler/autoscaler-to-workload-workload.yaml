@@ -1,3 +1,6 @@
+# This yaml deploys the autoscaler on a workload cluster and configures it to match
+# against the corresponding Cluster API cluster which is defined into the management cluster.
+---
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -27,56 +30,71 @@ spec:
             - /cluster-autoscaler
           args:
             - --cloud-provider=clusterapi
+            # Specify kubeconfig for management cluster
+            - --cloud-config=/management-cluster/kubeconfig
+            # Limit cluster autoscaler to only match against resources belonging to a single Cluster API cluster
+            - --node-group-auto-discovery=clusterapi:namespace=${CLUSTER_NAMESPACE},clusterName=${CLUSTER_NAME}
+          volumeMounts:
+            - name: kubeconfig-management-cluster
+              mountPath: /management-cluster
+              readOnly: true
       serviceAccountName: cluster-autoscaler
       terminationGracePeriodSeconds: 10
+      # NOTE: Using "hostNetwork: true" because it is required to resolve host.docker.internal in order to
+      # access the management cluster from the workload cluster.
+      hostNetwork: true
+      # We are scheduling the control plane on the CP node, because it is backed by real infrastructure (CAPD)
+      # while workers instead are backed by kubemark.
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
       tolerations:
         - effect: NoSchedule
-          key: node-role.kubernetes.io/master
+          key: node-role.kubernetes.io/control-plane
+      volumes:
+        - name: kubeconfig-management-cluster
+          secret:
+            secretName: kubeconfig-management-cluster
+            optional: false
+
 ---
+# Specify kubeconfig for management cluster
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeconfig-management-cluster
+  namespace: cluster-autoscaler-system
+stringData:
+  # NOTE: Using "insecure-skip-tls-verify: true" because kind does not add host.docker.internal to the
+  # API Server certificate, and we need to use this address in order to access the management cluster
+  # from the workload cluster.
+  kubeconfig: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: management-cluster
+      cluster:
+        insecure-skip-tls-verify: true
+        server: ${MANAGEMENT_CLUSTER_ADDRESS}
+    contexts:
+    - name: management-context
+      context:
+        cluster: management-cluster
+        namespace: ${CLUSTER_NAMESPACE}
+        user: cluster-autoscaler-sa
+    current-context: management-context
+    users:
+    - name: cluster-autoscaler-sa
+      user:
+        token: ${MANAGEMENT_CLUSTER_TOKEN}
+
+---
+# Defines the service used by the cluster autoscaler and gives it
+# RBAC permissions to look at all the workloads running in this cluster.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: cluster-autoscaler
   namespace: cluster-autoscaler-system
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: cluster-autoscaler-management
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-autoscaler-management
-subjects:
-  - kind: ServiceAccount
-    name: cluster-autoscaler
-    namespace: cluster-autoscaler-system
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: cluster-autoscaler-management
-rules:
-  - apiGroups:
-      - cluster.x-k8s.io
-    resources:
-      - machinedeployments
-      - machinedeployments/scale
-      - machines
-      - machinesets
-    verbs:
-      - get
-      - list
-      - update
-      - watch
-  # This is required to allow the autoscaler to scale up kubemarkmachines
-  - apiGroups:
-      - infrastructure.cluster.x-k8s.io
-    resources:
-      - kubemarkmachinetemplates
-    verbs:
-      - get
-      - list
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

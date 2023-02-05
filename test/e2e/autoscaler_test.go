@@ -20,7 +20,9 @@ limitations under the License.
 package e2e
 
 import (
+	"bytes"
 	"context"
+	b64 "encoding/base64"
 	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,10 +34,15 @@ import (
 	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
+	"runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterctlclient "sigs.k8s.io/cluster-api/cmd/clusterctl/client"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"time"
 )
 
 // TODO: Move this test in CAPI so all the providers can test the autoscaler, then we can cleanup this file
@@ -119,20 +126,23 @@ var _ = Describe("When using the autoscaler with Cluster API [PR-Blocking]", fun
 			WaitForMachineDeployments:    input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		}, clusterResources)
 
-		By("Installing the autoscaler")
-		versions := input.E2EConfig.GetProviderVersions(infrastructureProvider)
-		autoScalerYamlPath := filepath.Join(artifactFolder, "repository", fmt.Sprintf("infrastructure-%s", infrastructureProvider), versions[0], "autoscaler.yaml") // TODO: Make this configurable in CAPI,
+		// Get a ClusterProxy so we can interact with the workload cluster
+		workloadClusterProxy := input.BootstrapClusterProxy.GetWorkloadCluster(ctx, clusterResources.Cluster.Namespace, clusterResources.Cluster.Name)
 
-		ApplyAutoscalerYaml(ctx, ApplyAutoscalerYamlInput{
-			E2EConfig:    input.E2EConfig,
-			ClusterProxy: input.BootstrapClusterProxy,
-			path:         autoScalerYamlPath,
+		By("Installing the autoscaler in the workload cluster")
+		ApplyAutoscalerToWorkloadCluster(ctx, ApplyAutoscalerToWorkloadClusterInput{
+			E2EConfig:              input.E2EConfig,
+			artifactFolder:         artifactFolder,
+			infrastructureProvider: infrastructureProvider,
+			ManagementClusterProxy: input.BootstrapClusterProxy,
+			WorkloadClusterProxy:   workloadClusterProxy,
+			Cluster:                clusterResources.Cluster,
 		})
 
 		By("Creating workload that force the system to scale up")
 		AddScaleUpDeploymentAndWait(ctx, AddScaleUpDeploymentAndWaitInput{
 			Replicas:     5,
-			ClusterProxy: input.BootstrapClusterProxy.GetWorkloadCluster(ctx, clusterResources.Cluster.Namespace, clusterResources.Cluster.Name),
+			ClusterProxy: workloadClusterProxy,
 		}, input.E2EConfig.GetIntervals(bootstrapClusterProxy.GetName(), "wait-autoscaler")...)
 
 		By("PASSED!")
@@ -144,39 +154,122 @@ var _ = Describe("When using the autoscaler with Cluster API [PR-Blocking]", fun
 	})
 })
 
-type ApplyAutoscalerYamlInput struct {
-	E2EConfig    *clusterctl.E2EConfig
-	path         string
-	ClusterProxy framework.ClusterProxy
+type ApplyAutoscalerToWorkloadClusterInput struct {
+	E2EConfig            *clusterctl.E2EConfig
+	ClusterctlConfigPath string
+
+	// info about where autoscaler yaml are
+	// Note:
+	//  - the file creating the service account to be used by the autoscaler when connecting to the management cluster
+	//    - must be named "autoscaler-to-workload-management.yaml"
+	//    - must deploy objects in the $CLUSTER_NAMESPACE
+	//    - must create a service account with name "cluster-$CLUSTER_NAME" and the RBAC rules required to work.
+	//    - must create a secret with name "cluster-$CLUSTER_NAME-token" and type "kubernetes.io/service-account-token".
+	//  - the file creating the autoscaler deployment in the workload cluster
+	//    - must be named "autoscaler-to-workload-workload.yaml"
+	//    - must deploy objects in the cluster-autoscaler-system namespace
+	//    - must create a deployment named "cluster-autoscaler"
+	//    - must run the autoscaler with --cloud-provider=clusterapi,
+	//      --node-group-auto-discovery=clusterapi:namespace=${CLUSTER_NAMESPACE},clusterName=${CLUSTER_NAME}
+	//      and --cloud-config pointing to a kubeconfig to connect to the management cluster
+	//      using the token above.
+	//    - could use following vars to build the management cluster kubeconfig:
+	//      $MANAGEMENT_CLUSTER_TOKEN, $MANAGEMENT_CLUSTER_CA, $MANAGEMENT_CLUSTER_ADDRESS
+	artifactFolder         string
+	infrastructureProvider string
+
+	ManagementClusterProxy framework.ClusterProxy
+	Cluster                *clusterv1.Cluster
+	WorkloadClusterProxy   framework.ClusterProxy
 }
 
-func ApplyAutoscalerYaml(ctx context.Context, input ApplyAutoscalerYamlInput) {
-	Logf("Applying the cluster autoscaler deployment to the cluster")
+func ApplyAutoscalerToWorkloadCluster(ctx context.Context, input ApplyAutoscalerToWorkloadClusterInput) {
+	infrastructureProviderVersions := input.E2EConfig.GetProviderVersions(input.infrastructureProvider)
 
-	autoscalerYaml, err := os.ReadFile(input.path)
+	Logf("Creating the service account to be used by the autoscaler when connecting to the management cluster")
+
+	managementYamlPath := filepath.Join(input.artifactFolder, "repository", fmt.Sprintf("infrastructure-%s", input.infrastructureProvider), infrastructureProviderVersions[0], "autoscaler-to-workload-management.yaml")
+	managementYamlTemplate, err := os.ReadFile(managementYamlPath)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(input.ClusterProxy.Apply(ctx, autoscalerYaml)).To(Succeed())
+
+	managementYaml, err := ProcessYAML(&ProcessYAMLInput{
+		Template:             managementYamlTemplate,
+		ClusterctlConfigPath: input.ClusterctlConfigPath,
+		Env: map[string]string{
+			"CLUSTER_NAMESPACE": input.Cluster.Namespace,
+			"CLUSTER_NAME":      input.Cluster.Name,
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(input.ManagementClusterProxy.Apply(ctx, managementYaml)).To(Succeed())
+
+	tokenSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: input.Cluster.Namespace,
+			Name:      fmt.Sprintf("cluster-%s-token", input.Cluster.Name),
+		},
+	}
+	Eventually(func() bool {
+		err := input.ManagementClusterProxy.GetClient().Get(ctx, client.ObjectKeyFromObject(tokenSecret), tokenSecret)
+		if err != nil {
+			return false
+		}
+		if _, ok := tokenSecret.Data["token"]; !ok {
+			return false
+		}
+		if _, ok := tokenSecret.Data["ca.crt"]; !ok {
+			return false
+		}
+		return true
+	}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
+
+	Logf("Creating the autoscaler deployment in the workload cluster")
+
+	workloadYamlPath := filepath.Join(input.artifactFolder, "repository", fmt.Sprintf("infrastructure-%s", input.infrastructureProvider), infrastructureProviderVersions[0], "autoscaler-to-workload-workload.yaml")
+	workloadYamlTemplate, err := os.ReadFile(workloadYamlPath)
+	Expect(err).ToNot(HaveOccurred())
+
+	serverAddr := input.ManagementClusterProxy.GetRESTConfig().Host
+	// On CAPD, if not running on Linux, we need to use Docker's proxy to connect back to the host
+	// to the CAPD cluster. Moby on Linux doesn't use the host.docker.internal DNS name.
+	if runtime.GOOS != "linux" {
+		serverAddr = strings.ReplaceAll(serverAddr, "127.0.0.1", "host.docker.internal")
+	}
+
+	workloadYaml, err := ProcessYAML(&ProcessYAMLInput{
+		Template:             workloadYamlTemplate,
+		ClusterctlConfigPath: input.ClusterctlConfigPath,
+		Env: map[string]string{
+			"CLUSTER_NAMESPACE":          input.Cluster.Namespace,
+			"CLUSTER_NAME":               input.Cluster.Name,
+			"MANAGEMENT_CLUSTER_TOKEN":   string(tokenSecret.Data["token"]),
+			"MANAGEMENT_CLUSTER_CA":      b64.StdEncoding.EncodeToString(tokenSecret.Data["ca.crt"]),
+			"MANAGEMENT_CLUSTER_ADDRESS": serverAddr,
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(input.WorkloadClusterProxy.Apply(ctx, workloadYaml)).To(Succeed())
 
 	Logf("Wait for the autoscaler deployment and collect logs")
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cluster-autoscaler",        // TODO: get deployment name in input (or infer it from the yaml...)
-			Namespace: "cluster-autoscaler-system", // TODO: get deployment namespace in input (or infer it from the yaml...)
+			Name:      "cluster-autoscaler",
+			Namespace: "cluster-autoscaler-system",
 		},
 	}
 
-	if err := input.ClusterProxy.GetClient().Get(ctx, client.ObjectKeyFromObject(deployment), deployment); apierrors.IsNotFound(err) {
+	if err := input.WorkloadClusterProxy.GetClient().Get(ctx, client.ObjectKeyFromObject(deployment), deployment); apierrors.IsNotFound(err) {
 		framework.WaitForDeploymentsAvailable(ctx, framework.WaitForDeploymentsAvailableInput{
-			Getter:     input.ClusterProxy.GetClient(),
+			Getter:     input.WorkloadClusterProxy.GetClient(),
 			Deployment: deployment,
 		}, input.E2EConfig.GetIntervals(bootstrapClusterProxy.GetName(), "wait-controllers")...)
 
 		// Start streaming logs from all controller providers
 		framework.WatchDeploymentLogs(ctx, framework.WatchDeploymentLogsInput{
-			GetLister:  input.ClusterProxy.GetClient(),
-			ClientSet:  input.ClusterProxy.GetClientSet(),
+			GetLister:  input.WorkloadClusterProxy.GetClient(),
+			ClientSet:  input.WorkloadClusterProxy.GetClientSet(),
 			Deployment: deployment,
-			LogPath:    filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName(), "logs", deployment.GetNamespace()), // TODO: get log folder in input
+			LogPath:    filepath.Join(artifactFolder, "clusters", input.WorkloadClusterProxy.GetName(), "logs", deployment.GetNamespace()),
 		})
 	}
 }
@@ -237,4 +330,39 @@ func AddScaleUpDeploymentAndWait(ctx context.Context, input AddScaleUpDeployment
 		Getter:     input.ClusterProxy.GetClient(),
 		Deployment: scalelUpDeployment,
 	}, intervals...)
+}
+
+// TODO: move into the CAPI E2E framewowrk
+type ProcessYAMLInput struct {
+	Template             []byte
+	ClusterctlConfigPath string
+	Env                  map[string]string
+}
+
+func ProcessYAML(input *ProcessYAMLInput) ([]byte, error) {
+	for n, v := range input.Env {
+		os.Setenv(n, v)
+	}
+
+	c, err := clusterctlclient.New(input.ClusterctlConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	options := clusterctlclient.ProcessYAMLOptions{
+		ReaderSource: &clusterctlclient.ReaderSourceOptions{
+			Reader: bytes.NewReader(input.Template),
+		},
+	}
+
+	printer, err := c.ProcessYAML(options)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := printer.Yaml()
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
