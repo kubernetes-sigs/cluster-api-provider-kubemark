@@ -56,43 +56,49 @@ func main() {
 
 	constraint, err := semver.NewConstraint(fmt.Sprintf(">= %s", p.StartingVersion))
 	if err != nil {
-		log.Fatalf("err parsing %s: %v", p.StartingVersion, err)
+		log.Fatalf("error parsing starting version semver %s: %v", p.StartingVersion, err)
 	}
 
 	cmd := exec.Command("git", "-C", p.KubeDir, "fetch", "--tags")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("err fetching remote tags: %v", err)
+		log.Fatalf("error fetching git tags from kubernetes repository: %v", err)
 	}
-	repo, err := name.NewRepository("k8s.gcr.io/kube-proxy")
+
+	// use the kube-proxy image for a convenient way to get k8s version tags
+	repo, err := name.NewRepository("registry.k8s.io/kube-proxy")
 	if err != nil {
-		log.Fatalf("err parsing %v", err)
+		log.Fatalf("error parsing registry.k8s.io/kube-proxy: %v", err)
 	}
+
+	// build a list of version tags from the known kube-proxy images
 	tags, err := remote.List(repo)
 	if err != nil {
-		log.Fatalf("err fetching tags %v", err)
+		log.Fatalf("error fetching image tags from registry.k8s.io/kube-proxy: %v", err)
 	}
+
 	for _, t := range tags {
 		v, err := semver.NewVersion(t)
 		if err != nil {
-			log.Printf("err parsing %s, %v", t, err)
+			log.Printf("skipping image build for unrecognized semver %s", t)
 			continue
 		}
+
 		if constraint.Check(v) {
 			exists, err := p.imageExists(v)
 			if err != nil {
-				log.Fatalf("err checking if image exists for %v: %v", v, err)
+				log.Fatalf("error checking if image exists for %v: %v", v, err)
 			}
 			if exists {
-				log.Printf("skipping build for version %s, image already exists", v.Original())
+				log.Printf("skipping image build for version %s, image already exists", v.Original())
 			} else {
 				if err := p.dockerBuild(v); err != nil {
-					log.Fatalf("err building docker image for %v: %v", v, err)
+					log.Fatalf("error building image for %v: %v", v, err)
 				}
 			}
 			if err := p.dockerPush(v); err != nil {
-				log.Fatalf("err pushing docker image: %v", err)
+				log.Fatalf("error pushing image: %v", err)
 			}
 		}
 	}
