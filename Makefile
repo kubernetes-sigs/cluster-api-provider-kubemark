@@ -252,6 +252,7 @@ clean: ## Remove all generated files
 clean-bin: ## Remove all generated binaries
 	rm -rf bin
 	rm -rf hack/tools/bin
+	rm -rf hack/publish-kubemark-images/bin
 
 .PHONY: clean-release
 clean-release: ## Remove the release folder
@@ -266,7 +267,7 @@ verify: lint-full ## Runs all the verifier
 
 .PHONY: verify-modules
 verify-modules: modules ## Verifies go modules are up to date
-	@if !(git diff --quiet HEAD -- go.sum go.mod hack/tools/go.mod hack/tools/go.sum); then \
+	@if !(git diff --quiet HEAD -- go.sum go.mod hack/tools/go.mod hack/tools/go.sum hack/publish-kubemark-images/go.mod hack/publish-kubemark-images/go.sum); then \
 		git diff; \
 		echo "go module files are out of date"; exit 1; \
 	fi
