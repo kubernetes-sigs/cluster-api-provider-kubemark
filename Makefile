@@ -31,15 +31,15 @@ export GO111MODULE=on
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Directories.
-TOOLS_DIR := hack/tools
-TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
 BIN_DIR := bin
+TOOLS_DIR := hack/tools
+TOOLS_BIN_DIR := $(TOOLS_DIR)/$(BIN_DIR)
 
 # Binaries.
-CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
-CONVERSION_GEN := $(TOOLS_BIN_DIR)/conversion-gen
-GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
-KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
+CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/controller-gen)
+CONVERSION_GEN := $(abspath $(TOOLS_BIN_DIR)/conversion-gen)
+GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/golangci-lint)
+KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/kustomize)
 
 # Define Docker related variables. Releases should modify and double check these vars.
 REGISTRY ?= gcr.io/$(shell gcloud config get-value project)
@@ -83,8 +83,10 @@ $(CONTROLLER_GEN): $(TOOLS_DIR)/go.mod # Build controller-gen from tools folder.
 $(CONVERSION_GEN): $(TOOLS_DIR)/go.mod
 	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/conversion-gen k8s.io/code-generator/cmd/conversion-gen
 
-$(GOLANGCI_LINT): $(TOOLS_DIR)/go.mod # Build golangci-lint from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
+$(GOLANGCI_LINT): .github/workflows/golangci-lint.yml # Download golanci-lint using hack script into tools folder.
+	hack/ensure-golangci-lint.sh \
+		-b $(TOOLS_DIR)/$(BIN_DIR) \
+		$(shell cat .github/workflows/golangci-lint.yml | grep version | sed 's/.*version: //')
 
 $(KUSTOMIZE): # Build kustomize from tools folder.
 	hack/ensure-kustomize.sh

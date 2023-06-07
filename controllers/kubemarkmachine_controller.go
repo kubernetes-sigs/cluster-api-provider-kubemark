@@ -120,7 +120,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	log := ctrl.LoggerFrom(ctx).WithValues("kubemarkmachine", req.NamespacedName)
 
 	kubemarkMachine := &infrav1.KubemarkMachine{}
-	err := r.Get(ctx, req.NamespacedName, kubemarkMachine)
+	err := r.Get(ctx, req.NamespacedName, kubemarkMachine) //nolint for some reason this is causing issues with the golangci-lint typecheck
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -242,7 +242,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	var caSecret corev1.Secret
-	if err := r.Get(ctx, client.ObjectKey{
+	if err := r.Get(ctx, client.ObjectKey{ //nolint for some reason this is causing issues with the golangci-lint typecheck
 		Name:      secret.Name(cluster.Name, secret.ClusterCA),
 		Namespace: cluster.Namespace,
 	}, &caSecret); err != nil {

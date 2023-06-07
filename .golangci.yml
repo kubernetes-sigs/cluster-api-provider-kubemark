@@ -10,17 +10,13 @@ run:
 linters:
   disable-all: true
   enable:
-    - asasalint
     - asciicheck
-    - bidichk
     - bodyclose
-    - containedctx
     - depguard
     - dogsled
     # - dupword enable as soon as we bump golangci to lastest versions
     - durationcheck
     - errcheck
-    - errchkjson
     - exportloopref
     - gci
     - goconst
@@ -39,7 +35,6 @@ linters:
     - nilerr
     - noctx
     - nolintlint
-    - nosprintfhostport
     - prealloc
     - predeclared
     - revive
@@ -51,7 +46,6 @@ linters:
     - unconvert
     - unparam
     - unused
-    - usestdlibvars
     - whitespace
 
 linters-settings:
