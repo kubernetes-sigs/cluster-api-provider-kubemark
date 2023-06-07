@@ -1,6 +1,6 @@
 module github.com/kubernetes-sigs/cluster-api-provider-kubemark
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Masterminds/semver v1.5.0
