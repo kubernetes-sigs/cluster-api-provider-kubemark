@@ -1,4 +1,4 @@
-# Copyright 2020 The Kubernetes Authors.
+# Copyright 2023 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ROOT_DIR_RELATIVE := ../..
-include $(ROOT_DIR_RELATIVE)/common.mk
+all: build
 
-# Directories.
-BIN_DIR := bin
-
-## --------------------------------------
-## Tooling Binaries
-## --------------------------------------
-
-$(BIN_DIR):
-	mkdir -p $@
-
-.PHONY: clean
-clean: ## Remove all tools
-	rm -rf bin
-	rm -rf share
-
-KUSTOMIZE := $(BIN_DIR)/kustomize
-$(KUSTOMIZE): $(BIN_DIR) go.mod go.sum # Build kustomize from tools folder.
-	go build -tags=tools -o $@ sigs.k8s.io/kustomize/kustomize/v3
+build: main.go
+	go build -o bin/publish-kubemark-images
