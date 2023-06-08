@@ -130,8 +130,7 @@ func InitFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&healthAddr, "health-addr", ":9440",
 		"The address the health endpoint binds to.")
 
-	// TODO (elmiko) update the following default image link when we have a home for the kubemark images
-	flag.StringVar(&kubemarkImage, "kubemark-image", "quay.io/elmiko/kubemark",
+	flag.StringVar(&kubemarkImage, "kubemark-image", "quay.io/cluster-api-provider-kubemark/kubemark",
 		"The location of the kubemark image")
 
 	flags.AddTLSOptions(fs, &tlsOptions)
