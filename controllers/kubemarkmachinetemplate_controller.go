@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	infrav1 "github.com/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	infrav1 "sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 // KubemarkMachineTemplateReconciler reconciles a KubemarkMachineTemplate objects.
