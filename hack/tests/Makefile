@@ -18,11 +18,12 @@ CERT_MANAGER_IMAGE_REPOSITORY ?= quay.io/jetstack
 CERT_MANAGER_CAINJECTOR ?= cert-manager-cainjector
 CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
-CERT_MANAGER_VERSION ?= v1.5.3
+CERT_MANAGER_VERSION ?= v1.12.1
 KUBE_RBAC_PROXY_VERSION ?= v0.5.0
 KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
 DEV_REGISTRY ?= localhost:5000
+CAPI_VERSION := v1.3.99
 
 .start-kind-cluster:
 	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
@@ -83,8 +84,8 @@ endef
 .docker-build-capi: .ensure-capi-path
 	@make -C $(CAPI_PATH) docker-build REGISTRY=$(DEV_REGISTRY) && \
 		make -C $(CAPI_PATH) docker-push REGISTRY=$(DEV_REGISTRY)
-	@make -C ${CAPI_PATH}/test/infrastructure/docker docker-build REGISTRY=$(DEV_REGISTRY) && \
-  		make -C ${CAPI_PATH}/test/infrastructure/docker docker-push REGISTRY=$(DEV_REGISTRY)
+	@make -C $(CAPI_PATH) docker-build REGISTRY=$(DEV_REGISTRY) && \
+  		make -C $(CAPI_PATH) docker-push REGISTRY=$(DEV_REGISTRY)
 
 .docker-build-capk:
 	@make -C $(ROOT_DIR) release-manifests
@@ -95,7 +96,7 @@ endef
 
 .generate-capi-manifests: .ensure-capi-path
 	@make -C $(CAPI_PATH) generate-manifests REGISTRY=$(DEV_REGISTRY) PULL_POLICY=Always
-	@make -C ${CAPI_PATH}/test/infrastructure/docker generate-manifests REGISTRY=$(DEV_REGISTRY) PULL_POLICY=Always
+	@make -C $(CAPI_PATH) generate-manifests-docker-infrastructure REGISTRY=$(DEV_REGISTRY) PULL_POLICY=Always
 
 .generate-capk-manifests:
 	@make -C $(ROOT_DIR) generate-manifests REGISTRY=$(DEV_REGISTRY) PULL_POLICY=Always
@@ -113,7 +114,7 @@ CLUSTERCTL_CONFIG_PATH := $(HOME)/.cluster-api
 
 define LOCAL_REPOSITORY_PATCH
 cert-manager:
-  url: "$(ROOT_DIR)/hack/tests/resources/cert-manager/v1.1.0/cert-manager.yaml"
+  url: "$(ROOT_DIR)/hack/tests/resources/cert-manager/$(CERT_MANAGER_VERSION)/cert-manager.yaml"
 images:
   all:
     repository: "$(DEV_REGISTRY)"
@@ -134,10 +135,10 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .deploy-cluster-api:
 	@$(CAPI_PATH)/bin/clusterctl init \
 	 --config ~/.cluster-api/dev-repository/config.yaml \
-	 --core cluster-api:v1.0.99 \
-	 --bootstrap kubeadm:v1.0.99 \
-	 --control-plane kubeadm:v1.0.99 \
-	 --infrastructure docker:v1.0.99
+	 --core cluster-api:$(CAPI_VERSION) \
+	 --bootstrap kubeadm:$(CAPI_VERSION) \
+	 --control-plane kubeadm:$(CAPI_VERSION) \
+	 --infrastructure docker:$(CAPI_VERSION)
 
 	@kubectl kustomize $(abspath $(ROOT_DIR))/config | \
 	  kubectl apply -f -
