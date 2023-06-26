@@ -58,7 +58,7 @@ linters-settings:
       - '^ \+.*'
       - '^ ANCHOR.*'
   gci:
-    local-prefixes: "github.com/kubernetes-sigs/cluster-api-provider-kubemark"
+    local-prefixes: "sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark"
   importas:
     no-unaliased: true
     alias:

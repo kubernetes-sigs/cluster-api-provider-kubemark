@@ -1,4 +1,4 @@
-module github.com/kubernetes-sigs/cluster-api-provider-kubemark
+module sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark
 
 go 1.20
 

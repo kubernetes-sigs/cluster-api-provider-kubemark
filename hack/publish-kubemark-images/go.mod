@@ -1,4 +1,4 @@
-module github.com/kubernetes-sigs/cluster-api-provider-kubemark/hack/publish-kubemark-images
+module sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/hack/publish-kubemark-images
 
 go 1.19
 

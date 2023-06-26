@@ -75,7 +75,7 @@ test-e2e: ## Launch integration e2e test with building images (for local usage)
 
 .PHONY: manager
 manager: ## Build manager binary
-	go build -o $(BIN_DIR)/manager github.com/kubernetes-sigs/cluster-api-provider-kubemark
+	go build -o $(BIN_DIR)/manager sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark
 
 $(CONTROLLER_GEN): $(TOOLS_DIR)/go.mod # Build controller-gen from tools folder.
 	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/controller-gen sigs.k8s.io/controller-tools/cmd/controller-gen

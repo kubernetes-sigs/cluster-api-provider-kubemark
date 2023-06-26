@@ -1,4 +1,4 @@
-module github.com/kubernetes-sigs/cluster-api-provider-kubemark/hack/tools
+module sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/hack/tools
 
 go 1.20
 
