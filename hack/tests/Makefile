@@ -114,6 +114,7 @@ CLUSTERCTL_CONFIG_PATH := $(HOME)/.cluster-api
 
 define LOCAL_REPOSITORY_PATCH
 cert-manager:
+  version: "$(CERT_MANAGER_VERSION)"
   url: "$(ROOT_DIR)/hack/tests/resources/cert-manager/$(CERT_MANAGER_VERSION)/cert-manager.yaml"
 images:
   all:
