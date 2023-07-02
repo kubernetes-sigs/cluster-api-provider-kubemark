@@ -179,7 +179,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .tenant-cluster-info:
 	@echo "\nTenant cluster is ready!"
 	@echo "\nYou can access tenant cluster with the above kubeconfig. (It also can be found in '/tmp/km.kubeconfig')"
-	@echo "\nFor CNI, you may apply calico with 'kubectl --kubeconfig /tmp/km.kubeconfig apply -f https://docs.projectcalico.org/v3.20/manifests/calico.yaml'"
+	@echo "\nFor CNI, you may apply calico with 'kubectl --kubeconfig /tmp/km.kubeconfig apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml'"
 
 .PHONY: test-e2e
 test-e2e:	.start-kind-cluster \
