@@ -18,12 +18,12 @@ CERT_MANAGER_IMAGE_REPOSITORY ?= quay.io/jetstack
 CERT_MANAGER_CAINJECTOR ?= cert-manager-cainjector
 CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
-CERT_MANAGER_VERSION ?= v1.12.1
+CERT_MANAGER_VERSION ?= v1.12.2
 KUBE_RBAC_PROXY_VERSION ?= v0.5.0
 KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.3.99
+CAPI_VERSION := v1.4.99
 
 .start-kind-cluster:
 	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
