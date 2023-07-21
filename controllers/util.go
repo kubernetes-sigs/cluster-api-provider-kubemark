@@ -19,7 +19,7 @@ package controllers
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	infrav1 "sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (

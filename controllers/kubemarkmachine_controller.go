@@ -57,7 +57,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	infrav1 "sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
 )
 
 const (
