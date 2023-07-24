@@ -43,8 +43,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	infrav1 "sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/api/v1alpha4"
-	"sigs.k8s.io/kubernetes-sigs/cluster-api-provider-kubemark/controllers"
+	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
+	"sigs.k8s.io/cluster-api-provider-kubemark/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
