@@ -45,7 +45,7 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.5.0/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.6.0/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
 
@@ -137,7 +137,7 @@ export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.26.6
 export CAPI_PATH=<path to cluster-api repository>
 export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
 cd $(ROOT_DIR)
-make test-e2e 
+make test-e2e
 ```
 
 ## Supported Versions
