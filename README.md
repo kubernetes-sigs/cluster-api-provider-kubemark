@@ -66,7 +66,7 @@ flavor to get a hybrid CAPD/CAPK cluster:
 ```bash
 export SERVICE_CIDR=["172.17.0.0/16"]
 export POD_CIDR=["192.168.122.0/24"]
-clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.26.6 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.27.3 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
 *Note: these CIDR values are specific to Ubuntu Server 22.04*
@@ -80,8 +80,8 @@ for more information.
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.26.6 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.26.6 --worker-machine-count=4        | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.27.3 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.27.3 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
@@ -133,7 +133,7 @@ To run this pipeline docker, kind, python must be installed.
 You can run the E2E test with the following steps:
 
 ```bash
-export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.26.6
+export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.27.3
 export CAPI_PATH=<path to cluster-api repository>
 export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
 cd $(ROOT_DIR)
