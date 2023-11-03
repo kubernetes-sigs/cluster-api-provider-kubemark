@@ -135,7 +135,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 
 .deploy-cluster-api:
 	@$(CAPI_PATH)/bin/clusterctl init \
-	 --config ~/.cluster-api/dev-repository/config.yaml \
+	 --config $(CLUSTERCTL_CONFIG_PATH)/dev-repository/config.yaml \
 	 --core cluster-api:$(CAPI_VERSION) \
 	 --bootstrap kubeadm:$(CAPI_VERSION) \
 	 --control-plane kubeadm:$(CAPI_VERSION) \
@@ -143,7 +143,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 
 	@kubectl kustomize $(abspath $(ROOT_DIR))/config | \
 	  kubectl apply -f -
-	 
+
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-system --for=condition=Available=true deployment/capi-controller-manager --timeout=4m
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-kubeadm-bootstrap-system --for=condition=Available=true deployment/capi-kubeadm-bootstrap-controller-manager --timeout=4m
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-kubeadm-control-plane-system --for=condition=Available=true deployment/capi-kubeadm-control-plane-controller-manager --timeout=4m
