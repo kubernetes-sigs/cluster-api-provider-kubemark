@@ -103,7 +103,7 @@ endef
 
 .generate-manifests: .generate-capi-manifests .generate-capk-manifests
 
-CLUSTERCTL_CONFIG_PATH := $(HOME)/.cluster-api
+CLUSTERCTL_CONFIG_PATH := $(XDG_CONFIG_HOME)/cluster-api
 .create-local-repository: .ensure-capi-path
 	@rm -fr $(CLUSTERCTL_CONFIG_PATH)
 	@cd $(CAPI_PATH) && PATH=$${PATH}:$(abspath $(CAPI_PATH)) && ./cmd/clusterctl/hack/create-local-repository.py
