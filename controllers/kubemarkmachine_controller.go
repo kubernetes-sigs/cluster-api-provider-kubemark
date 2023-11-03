@@ -83,7 +83,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		For(&infrav1.KubemarkMachine{}).
 		WithOptions(options).
 		Watches(
-			&source.Kind{Type: &clusterv1.Machine{}},
+			&clusterv1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
@@ -97,7 +97,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
 	err = c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines),
 		predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
 	)
