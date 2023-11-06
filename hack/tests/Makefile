@@ -23,7 +23,7 @@ KUBE_RBAC_PROXY_VERSION ?= v0.5.0
 KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.4.99
+CAPI_VERSION := v1.5.99
 
 .start-kind-cluster:
 	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
@@ -103,7 +103,7 @@ endef
 
 .generate-manifests: .generate-capi-manifests .generate-capk-manifests
 
-CLUSTERCTL_CONFIG_PATH := $(HOME)/.cluster-api
+CLUSTERCTL_CONFIG_PATH := $(XDG_CONFIG_HOME)/cluster-api
 .create-local-repository: .ensure-capi-path
 	@rm -fr $(CLUSTERCTL_CONFIG_PATH)
 	@cd $(CAPI_PATH) && PATH=$${PATH}:$(abspath $(CAPI_PATH)) && ./cmd/clusterctl/hack/create-local-repository.py
@@ -135,7 +135,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 
 .deploy-cluster-api:
 	@$(CAPI_PATH)/bin/clusterctl init \
-	 --config ~/.cluster-api/dev-repository/config.yaml \
+	 --config $(CLUSTERCTL_CONFIG_PATH)/dev-repository/config.yaml \
 	 --core cluster-api:$(CAPI_VERSION) \
 	 --bootstrap kubeadm:$(CAPI_VERSION) \
 	 --control-plane kubeadm:$(CAPI_VERSION) \
@@ -143,7 +143,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 
 	@kubectl kustomize $(abspath $(ROOT_DIR))/config | \
 	  kubectl apply -f -
-	 
+
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-system --for=condition=Available=true deployment/capi-controller-manager --timeout=4m
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-kubeadm-bootstrap-system --for=condition=Available=true deployment/capi-kubeadm-bootstrap-controller-manager --timeout=4m
 	@kubectl --kubeconfig $(HOME)/.kube/config wait -n capi-kubeadm-control-plane-system --for=condition=Available=true deployment/capi-kubeadm-control-plane-controller-manager --timeout=4m
