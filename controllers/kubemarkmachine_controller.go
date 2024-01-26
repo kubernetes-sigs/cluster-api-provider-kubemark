@@ -92,7 +92,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed setting up with a controller manager")
 	}
 
-	clusterToKubemarkMachines, err := util.ClusterToObjectsMapper(mgr.GetClient(), &infrav1.KubemarkMachineList{}, mgr.GetScheme())
+	clusterToKubemarkMachines, err := util.ClusterToTypedObjectsMapper(mgr.GetClient(), &infrav1.KubemarkMachineList{}, mgr.GetScheme())
 	if err != nil {
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
