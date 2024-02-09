@@ -40,8 +40,10 @@ import (
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/flags"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-kubemark/controllers"
@@ -167,25 +169,39 @@ func main() {
 
 	mgr, err := ctrl.NewManager(getConfig(), ctrl.Options{
 		Scheme:                     scheme,
-		MetricsBindAddress:         metricsBindAddr,
+		Metrics:                    metricsserver.Options{BindAddress: metricsBindAddr},
 		LeaderElection:             enableLeaderElection,
 		LeaderElectionID:           "kubemark-manager-leader-election-capi",
 		LeaseDuration:              &leaderElectionLeaseDuration,
 		RenewDeadline:              &leaderElectionRenewDeadline,
 		RetryPeriod:                &leaderElectionRetryPeriod,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		Namespace:                  watchNamespace,
-		SyncPeriod:                 &syncPeriod,
-		ClientDisableCacheFor:      []client.Object{
-			// TODO: Disable Cache for ConfigMap, Sercrets, Pods and shift to using PartialObjectMetadata for Get/List. Same in BackingClusterTracker.
-			// &corev1.ConfigMap{},
-			// &corev1.Secret{},
-			// &corev1.Pod{},
+		Cache: cache.Options{
+			SyncPeriod: &syncPeriod,
+			DefaultNamespaces: map[string]cache.Config{
+				watchNamespace: cache.Config{},
+			},
 		},
-		Port:                   webhookPort,
+		WebhookServer: &webhook.DefaultServer{
+			Options: webhook.Options{
+				Port:    webhookPort,
+				CertDir: webhookCertDir,
+				TLSOpts: tlsOptionOverrides,
+			},
+		},
 		HealthProbeBindAddress: healthAddr,
-		CertDir:                webhookCertDir,
-		TLSOpts:                tlsOptionOverrides,
+		// TODO: Disable Cache for ConfigMap, Sercrets, Pods and shift to using PartialObjectMetadata for Get/List. Same in BackingClusterTracker.
+		/*
+			Client: client.Options{
+				Cache: &client.CacheOptions{
+					DisableFor: []client.Object{
+						&corev1.ConfigMap{},
+						&corev1.Secret{},
+						&corev1.Pod{},
+					},
+				},
+			},
+		*/
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
