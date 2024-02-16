@@ -53,19 +53,15 @@ spec:
         certSANs:
         - localhost
         - 127.0.0.1
+        - 0.0.0.0
+        - host.docker.internal
       controllerManager:
         extraArgs:
           enable-hostpath-provisioner: "true"
     initConfiguration:
-      nodeRegistration:
-        criSocket: /var/run/containerd/containerd.sock
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+      nodeRegistration: {}
     joinConfiguration:
-      nodeRegistration:
-        criSocket: /var/run/containerd/containerd.sock
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+      nodeRegistration: {}
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -73,5 +69,5 @@ spec:
       name: km-cp-control-plane
       namespace: default
   replicas: 1
-  version: v1.28.0
+  version: v1.28.7
 
