@@ -57,17 +57,12 @@ spec:
       controllerManager:
         extraArgs: {enable-hostpath-provisioner: 'true'}
       apiServer:
-        certSANs: [localhost, 127.0.0.1]
+        # host.docker.internal is required by kubetest when running on MacOS because of the way ports are proxied.
+        certSANs: [localhost, 127.0.0.1, 0.0.0.0, host.docker.internal]
     initConfiguration:
-      nodeRegistration:
-        criSocket: unix:///var/run/containerd/containerd.sock
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+      nodeRegistration: {} # node registration parameters are automatically injected by CAPD according to the kindest/node image in use.
     joinConfiguration:
-      nodeRegistration:
-        criSocket: unix:///var/run/containerd/containerd.sock
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+      nodeRegistration: {} # node registration parameters are automatically injected by CAPD according to the kindest/node image in use.
   version: "${KUBERNETES_VERSION}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
