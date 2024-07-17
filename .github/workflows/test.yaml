@@ -5,7 +5,7 @@ jobs:
     if: (github.repository == 'kubernetes-sigs/cluster-api-provider-kubemark')
     strategy:
       matrix:
-        go-version: [1.20.x]
+        go-version: [1.22.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,7 +23,7 @@ jobs:
   pr-verify:
     strategy:
       matrix:
-        go-version: [1.20.x]
+        go-version: [1.22.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
