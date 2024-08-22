@@ -144,9 +144,9 @@ make test-e2e
 
 | Dependency  | Version |
 |:------------|:-------:|
-| kubectl     |  v1.28  |
-| kubernetes  |  v1.28  |
-| Go          |  v1.20  |
+| kubectl     |  v1.29  |
+| kubernetes  |  v1.29  |
+| Go          |  v1.22  |
 | kind        |  v0.17  |
-| cluster-api |  v1.6   |
+| cluster-api |  v1.7   |
 | kustomize   |  v4.4   |

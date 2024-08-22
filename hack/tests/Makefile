@@ -23,7 +23,7 @@ KUBE_RBAC_PROXY_VERSION ?= v0.5.0
 KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.6.99
+CAPI_VERSION := v1.7.99
 XDG_CONFIG_HOME ?= $(HOME)/.config
 
 .start-kind-cluster:
