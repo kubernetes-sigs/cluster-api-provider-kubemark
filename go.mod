@@ -2,8 +2,6 @@ module sigs.k8s.io/cluster-api-provider-kubemark
 
 go 1.21
 
-toolchain go1.22.2
-
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/pkg/errors v0.9.1
