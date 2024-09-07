@@ -61,7 +61,8 @@ import (
 )
 
 const (
-	kubemarkName = "hollow-node"
+	kubemarkName             = "hollow-node"
+	kubemarkSecretNameSuffix = "kubemark-config"
 
 	// MachineControllerName defines the user-agent name used when creating rest clients.
 	MachineControllerName = "kubemarkmachine-controller"
@@ -196,7 +197,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		if err := kubemarkClusterClient.Delete(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      kubemarkMachine.Name,
+				Name:      secret.Name(kubemarkMachine.Name, kubemarkSecretNameSuffix),
 				Namespace: kubemarkClusterNamespace,
 			},
 		}); err != nil {
@@ -311,7 +312,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubemarkMachine.Name,
+			Name:      secret.Name(kubemarkMachine.Name, kubemarkSecretNameSuffix),
 			Namespace: kubemarkClusterNamespace,
 		},
 		Data: map[string][]byte{
