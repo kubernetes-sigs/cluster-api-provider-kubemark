@@ -133,7 +133,7 @@ To run this pipeline docker, kind, python must be installed.
 You can run the E2E test with the following steps:
 
 ```bash
-export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.28.0
+export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.29.0
 export CAPI_PATH=<path to cluster-api repository>
 export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
 cd $(ROOT_DIR)
