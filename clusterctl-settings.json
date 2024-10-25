@@ -2,7 +2,7 @@
   "name": "infrastructure-kubemark",
     "config": {
       "componentsFile": "infrastructure-components.yaml",
-      "nextVersion": "v0.7.99",
+      "nextVersion": "v0.8.99",
       "configFolder": "config"
     }
 }
