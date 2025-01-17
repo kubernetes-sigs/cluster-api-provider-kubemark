@@ -81,7 +81,7 @@ var (
 	webhookCertDir                     string
 	healthAddr                         string
 	kubemarkImage                      string
-	tlsOptions                         = flags.TLSOptions{}
+	managerOptions                     = flags.ManagerOptions{}
 	logOptions                         = logs.NewOptions()
 )
 
@@ -135,7 +135,7 @@ func InitFlags(fs *pflag.FlagSet) {
 	flag.StringVar(&kubemarkImage, "kubemark-image", "quay.io/cluster-api-provider-kubemark/kubemark",
 		"The location of the kubemark image")
 
-	flags.AddTLSOptions(fs, &tlsOptions)
+	flags.AddManagerOptions(fs, &managerOptions)
 }
 
 func main() {
@@ -161,7 +161,7 @@ func main() {
 		}()
 	}
 
-	tlsOptionOverrides, err := flags.GetTLSOptionOverrideFuncs(tlsOptions)
+	tlsOptionOverrides, _, err := flags.GetManagerOptions(managerOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to add TLS settings to the webhook server")
 		os.Exit(1)

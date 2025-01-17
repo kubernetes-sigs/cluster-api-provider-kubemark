@@ -98,9 +98,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
 	err = c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines),
-		predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx)),
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx))),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed adding Watch for Clusters to KubemarkMachines")
