@@ -87,7 +87,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 			&clusterv1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
 		).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "failed setting up with a controller manager")
@@ -98,7 +98,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
 	err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx))),
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterUnpausedAndInfrastructureReady(r.Scheme, ctrl.LoggerFrom(ctx))),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed adding Watch for Clusters to KubemarkMachines")

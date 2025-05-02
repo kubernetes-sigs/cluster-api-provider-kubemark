@@ -69,5 +69,5 @@ spec:
       name: km-cp-control-plane
       namespace: default
   replicas: 1
-  version: v1.29.8
+  version: v1.31.2
 
