@@ -53,25 +53,6 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - kubemarkmachines
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
-  - kubemarkmachines/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
   - kubemarkmachinetemplates
   verbs:
   - create
@@ -84,6 +65,7 @@ rules:
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
+  - kubemarkmachines/status
   - kubemarkmachinetemplates/status
   verbs:
   - get

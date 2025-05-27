@@ -46,7 +46,7 @@ func (r *KubemarkMachineTemplateReconciler) SetupWithManager(ctx context.Context
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.KubemarkMachineTemplate{}).
 		WithOptions(options).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Complete(r)
 }
 
