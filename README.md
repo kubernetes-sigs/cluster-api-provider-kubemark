@@ -32,6 +32,13 @@ bare-metal machines). It differs significantly in that Kubemark nodes only
 pretend to run pods scheduled to them. For more information on Kubemark, the
 [Kubemark developer guide][kubemark_docs] has more details.
 
+## Supported Versions
+
+| Dependency  | Version |
+|:------------|:-------:|
+| kubernetes  |  v1.31  |
+| cluster-api |  v1.9   |
+
 ## Getting started
 
 **Prerequisites**
@@ -133,20 +140,9 @@ To run this pipeline docker, kind, python must be installed.
 You can run the E2E test with the following steps:
 
 ```bash
-export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.29.0
+export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.31.0
 export CAPI_PATH=<path to cluster-api repository>
 export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
 cd $(ROOT_DIR)
 make test-e2e
 ```
-
-## Supported Versions
-
-| Dependency  | Version |
-|:------------|:-------:|
-| kubectl     |  v1.29  |
-| kubernetes  |  v1.29  |
-| Go          |  v1.22  |
-| kind        |  v0.17  |
-| cluster-api |  v1.7   |
-| kustomize   |  v4.4   |
