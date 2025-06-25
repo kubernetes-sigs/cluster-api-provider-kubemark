@@ -155,6 +155,42 @@ spec:
                               These will only be used with Kubernetes v1.22+.
                               Defaults to {"cpu": "1", "memory": "4G"}
                             type: object
+                          registerWithTaints:
+                            description: |-
+                              RegisterWithTaints is an array of Taints that will be applied to created
+                              nodes. Taints applied this way will be injected as command line flags to
+                              the kubemark process.
+                              Defaults to no taints
+                            items:
+                              description: |-
+                                The node this Taint is attached to has the "effect" on
+                                any pod that does not tolerate the Taint.
+                              properties:
+                                effect:
+                                  description: |-
+                                    Required. The effect of the taint on pods
+                                    that do not tolerate the taint.
+                                    Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+                                  type: string
+                                key:
+                                  description: Required. The taint key to be applied
+                                    to a node.
+                                  type: string
+                                timeAdded:
+                                  description: |-
+                                    TimeAdded represents the time at which the taint was added.
+                                    It is only written for NoExecute taints.
+                                  format: date-time
+                                  type: string
+                                value:
+                                  description: The taint value corresponding to the
+                                    taint key.
+                                  type: string
+                              required:
+                              - effect
+                              - key
+                              type: object
+                            type: array
                         type: object
                       providerID:
                         description: ProviderID will be the kubemark pod name in ProviderID

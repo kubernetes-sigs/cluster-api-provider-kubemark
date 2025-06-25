@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
@@ -109,4 +110,51 @@ func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
 	}
 
 	return ret, nil
+}
+
+func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
+	tests := []struct {
+		name          string
+		taints        []corev1.Taint
+		expectedFlags string
+	}{
+		{
+			name:          "empty array",
+			expectedFlags: "",
+		},
+		{
+			name: "one taint",
+			taints: []corev1.Taint{
+				{
+					Key:    "some.taint/key",
+					Effect: "NoExecute",
+					Value:  "some-value",
+				},
+			},
+			expectedFlags: "--register-with-taints=some.taint/key=some-value:NoExecute",
+		},
+		{
+			name: "two taints, one without value",
+			taints: []corev1.Taint{
+				{
+					Key:    "some.taint/key",
+					Effect: "NoExecute",
+					Value:  "some-value",
+				},
+				{
+					Key:    "some-other.taint/key",
+					Effect: "NoSchedule",
+				},
+			},
+			expectedFlags: "--register-with-taints=some.taint/key=some-value:NoExecute,some-other.taint/key=:NoSchedule",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			observedFlags := getKubemarkRegisterWithTaintsFlag(tt.taints)
+			if observedFlags != tt.expectedFlags {
+				t.Error("observed flags did not match expected", observedFlags, tt.expectedFlags)
+			}
+		})
+	}
 }

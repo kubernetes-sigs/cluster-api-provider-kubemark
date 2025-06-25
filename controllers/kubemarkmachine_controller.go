@@ -360,6 +360,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
+	registerWithTaintsFlag := getKubemarkRegisterWithTaintsFlag(kubemarkMachine.Spec.KubemarkOptions.RegisterWithTaints)
+	kubemarkArgs = append(kubemarkArgs, registerWithTaintsFlag)
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
@@ -506,5 +509,21 @@ func getKubemarkExtendedResourcesFlag(extendedResources infrav1.KubemarkExtended
 	}
 
 	flags := fmt.Sprintf("--extended-resources=%s", strings.Join(resources, ","))
+	return flags
+}
+
+// getKubemarkRegisterWithTaintsFlag returns the raw kubemark command line flag for
+// --registration-with-taints` if they are specified in the spec or an empty string if not.
+// format: comma separated "<key>=<value>:<effect>"
+func getKubemarkRegisterWithTaintsFlag(taints []corev1.Taint) string {
+	if len(taints) == 0 {
+		return ""
+	}
+	taintstrings := []string{}
+	for _, taint := range taints {
+		ts := fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect)
+		taintstrings = append(taintstrings, ts)
+	}
+	flags := fmt.Sprintf("--register-with-taints=%s", strings.Join(taintstrings, ","))
 	return flags
 }
