@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	kubemarkExtendedResourcesFlag = "--extended-resources="
-	kubemarkNodeLabelsFlag        = "--node-labels"
+	kubemarkExtendedResourcesFlag  = "--extended-resources"
+	kubemarkNodeLabelsFlag         = "--node-labels"
+	kubemarkRegisterWithTaintsFlag = "--register-with-taints"
 )
 
 func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
@@ -50,14 +51,14 @@ func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 			resources: infrav1.KubemarkExtendedResourceList{
 				infrav1.KubemarkExtendedResourceCPU: resource.MustParse("2"),
 			},
-			expectedFlags: "--extended-resources=cpu=2",
+			expectedFlags: fmt.Sprintf("%s=cpu=2", kubemarkExtendedResourcesFlag),
 		},
 		{
 			name: "memory",
 			resources: infrav1.KubemarkExtendedResourceList{
 				infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
 			},
-			expectedFlags: "--extended-resources=memory=16G",
+			expectedFlags: fmt.Sprintf("%s=memory=16G", kubemarkExtendedResourcesFlag),
 		},
 		{
 			name: "cpu, memory, gpu",
@@ -66,7 +67,7 @@ func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 				infrav1.KubemarkExtendedResourceMemory: resource.MustParse("16G"),
 				"nvidia.com/gpu":                       resource.MustParse("1"),
 			},
-			expectedFlags: "--extended-resources=cpu=2,memory=16G,nvidia.com/gpu=1",
+			expectedFlags: fmt.Sprintf("%s=cpu=2,memory=16G,nvidia.com/gpu=1", kubemarkExtendedResourcesFlag),
 		},
 	}
 	for _, tt := range tests {
@@ -106,7 +107,7 @@ func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
 					Value:  "some-value",
 				},
 			},
-			expectedFlags: "--register-with-taints=some.taint/key=some-value:NoExecute",
+			expectedFlags: fmt.Sprintf("%s=some.taint/key=some-value:NoExecute", kubemarkRegisterWithTaintsFlag),
 		},
 		{
 			name: "two taints, one without value",
@@ -121,7 +122,7 @@ func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
 					Effect: "NoSchedule",
 				},
 			},
-			expectedFlags: "--register-with-taints=some.taint/key=some-value:NoExecute,some-other.taint/key=:NoSchedule",
+			expectedFlags: fmt.Sprintf("%s=some.taint/key=some-value:NoExecute,some-other.taint/key=:NoSchedule", kubemarkRegisterWithTaintsFlag),
 		},
 	}
 	for _, tt := range tests {
@@ -192,7 +193,8 @@ func mapFromFlags(prefix, flags string) (map[string]string, error) {
 
 	ret := map[string]string{}
 	// create an array of resources strings (eg "cpu=1")
-	resources := strings.Split(flags[len(kubemarkExtendedResourcesFlag):], ",")
+	// we want to split the flag and equal sign from the string
+	resources := strings.Split(flags[len(prefix)+1:], ",")
 	for _, r := range resources {
 		// split the resource string into its key and value
 		rsplit := strings.Split(r, "=")
