@@ -363,6 +363,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	registerWithTaintsFlag := getKubemarkRegisterWithTaintsFlag(kubemarkMachine.Spec.KubemarkOptions.RegisterWithTaints)
 	kubemarkArgs = append(kubemarkArgs, registerWithTaintsFlag)
 
+	nodeLabelsFlag := getKubemarkNodeLabelsFlag(kubemarkMachine.Spec.KubemarkOptions.NodeLabels)
+	kubemarkArgs = append(kubemarkArgs, nodeLabelsFlag)
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubemarkMachine.Name,
@@ -525,5 +528,21 @@ func getKubemarkRegisterWithTaintsFlag(taints []corev1.Taint) string {
 		taintstrings = append(taintstrings, ts)
 	}
 	flags := fmt.Sprintf("--register-with-taints=%s", strings.Join(taintstrings, ","))
+	return flags
+}
+
+// getKubemarkNodeLabelsFlag returns the raw kubemark command line flag for
+// `--node-labels` if the map contains any, or an empty string otherwise.
+// format: comma separated "<key>=<value>"
+func getKubemarkNodeLabelsFlag(labels map[string]string) string {
+	if len(labels) == 0 {
+		return ""
+	}
+	labelstrings := []string{}
+	for k, v := range labels {
+		ls := fmt.Sprintf("%s=%s", k, v)
+		labelstrings = append(labelstrings, ls)
+	}
+	flags := fmt.Sprintf("--node-labels=%s", strings.Join(labelstrings, ","))
 	return flags
 }

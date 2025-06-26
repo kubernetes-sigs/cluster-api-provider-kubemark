@@ -31,6 +31,7 @@ import (
 
 const (
 	kubemarkExtendedResourcesFlag = "--extended-resources="
+	kubemarkNodeLabelsFlag        = "--node-labels"
 )
 
 func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
@@ -71,11 +72,11 @@ func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			observedFlags := getKubemarkExtendedResourcesFlag(tt.resources)
-			observed, err := mapFromExtendedResourceFlags(observedFlags)
+			observed, err := mapFromFlags(kubemarkExtendedResourcesFlag, observedFlags)
 			if err != nil {
 				t.Error("unable to process observed flag string", err)
 			}
-			expected, err := mapFromExtendedResourceFlags(tt.expectedFlags)
+			expected, err := mapFromFlags(kubemarkExtendedResourcesFlag, tt.expectedFlags)
 			if err != nil {
 				t.Error("unable to process expected flag string", err)
 			}
@@ -84,32 +85,6 @@ func TestGetKubemarkExtendedResourcesFlag(t *testing.T) {
 			}
 		})
 	}
-}
-
-// This is a helper function for processing the extended resources command line flags.
-// It accepts a string in the format of the flag and returns a map of resources and quantities.
-func mapFromExtendedResourceFlags(flags string) (map[string]string, error) {
-	if flags == "" {
-		return nil, nil
-	}
-
-	if !strings.HasPrefix(flags, kubemarkExtendedResourcesFlag) {
-		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", kubemarkExtendedResourcesFlag, flags))
-	}
-
-	ret := map[string]string{}
-	// create an array of resources strings (eg "cpu=1")
-	resources := strings.Split(flags[len(kubemarkExtendedResourcesFlag):], ",")
-	for _, r := range resources {
-		// split the resource string into its key and value
-		rsplit := strings.Split(r, "=")
-		if len(rsplit) != 2 {
-			return nil, errors.New(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
-		}
-		ret[rsplit[0]] = rsplit[1]
-	}
-
-	return ret, nil
 }
 
 func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
@@ -157,4 +132,75 @@ func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetKubemarkNodeLabelsFlag(t *testing.T) {
+	tests := []struct {
+		name          string
+		labels        map[string]string
+		expectedFlags string // the expected flags string does not need to be in a specific order
+	}{
+		{
+			name:          "empty map",
+			labels:        map[string]string{},
+			expectedFlags: "",
+		},
+		{
+			name: "map with one label",
+			labels: map[string]string{
+				"label.io/one": "1",
+			},
+			expectedFlags: fmt.Sprintf("%s=label.io/one=1", kubemarkNodeLabelsFlag),
+		},
+		{
+			name: "map with two label",
+			labels: map[string]string{
+				"label.io/one": "1",
+				"label.io/two": "2",
+			},
+			expectedFlags: fmt.Sprintf("%s=label.io/one=1,label.io/two=2", kubemarkNodeLabelsFlag),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			observedFlags := getKubemarkNodeLabelsFlag(tt.labels)
+			observed, err := mapFromFlags(kubemarkNodeLabelsFlag, observedFlags)
+			if err != nil {
+				t.Error("unable to process observed flag string", err)
+			}
+			expected, err := mapFromFlags(kubemarkNodeLabelsFlag, tt.expectedFlags)
+			if err != nil {
+				t.Error("unable to process expected flag string", err)
+			}
+			if !reflect.DeepEqual(observed, expected) {
+				t.Error("observed flags did not match expected", observedFlags, tt.expectedFlags)
+			}
+		})
+	}
+}
+
+// This is a helper function for processing the extended resources command line flags.
+// It accepts a string in the format of the flag and returns a map of resources and quantities.
+func mapFromFlags(prefix, flags string) (map[string]string, error) {
+	if flags == "" {
+		return nil, nil
+	}
+
+	if !strings.HasPrefix(flags, prefix) {
+		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", prefix, flags))
+	}
+
+	ret := map[string]string{}
+	// create an array of resources strings (eg "cpu=1")
+	resources := strings.Split(flags[len(kubemarkExtendedResourcesFlag):], ",")
+	for _, r := range resources {
+		// split the resource string into its key and value
+		rsplit := strings.Split(r, "=")
+		if len(rsplit) != 2 {
+			return nil, errors.New(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
+		}
+		ret[rsplit[0]] = rsplit[1]
+	}
+
+	return ret, nil
 }

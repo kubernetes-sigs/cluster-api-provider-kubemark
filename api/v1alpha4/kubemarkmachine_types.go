@@ -98,6 +98,12 @@ type KubemarkProcessOptions struct {
 	// the kubemark process.
 	// Defaults to no taints
 	RegisterWithTaints []corev1.Taint `json:"registerWithTaints,omitempty"`
+
+	// NodeLabels is a map of labels to that will be applied created nodes.
+	// Labels applied this way will be injected as command line flags to the
+	// kubemark process.
+	// Defaults to no labels
+	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 }
 
 // KubemarkMachineStatus defines the observed state of KubemarkMachine.
