@@ -524,8 +524,7 @@ func getKubemarkRegisterWithTaintsFlag(taints []corev1.Taint) string {
 	}
 	taintstrings := []string{}
 	for _, taint := range taints {
-		ts := fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect)
-		taintstrings = append(taintstrings, ts)
+		taintstrings = append(taintstrings, taint.ToString())
 	}
 	flags := fmt.Sprintf("--register-with-taints=%s", strings.Join(taintstrings, ","))
 	return flags
