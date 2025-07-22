@@ -7,7 +7,7 @@ toolchain go1.22.2
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.7
 	k8s.io/api v0.31.3
 	k8s.io/apimachinery v0.31.3
 	k8s.io/client-go v0.31.3
