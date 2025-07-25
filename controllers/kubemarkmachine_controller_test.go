@@ -122,7 +122,7 @@ func TestGetKubemarkRegisterWithTaintsFlag(t *testing.T) {
 					Effect: "NoSchedule",
 				},
 			},
-			expectedFlags: fmt.Sprintf("%s=some.taint/key=some-value:NoExecute,some-other.taint/key=:NoSchedule", kubemarkRegisterWithTaintsFlag),
+			expectedFlags: fmt.Sprintf("%s=some.taint/key=some-value:NoExecute,some-other.taint/key:NoSchedule", kubemarkRegisterWithTaintsFlag),
 		},
 	}
 	for _, tt := range tests {
