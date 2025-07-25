@@ -92,6 +92,18 @@ type KubemarkProcessOptions struct {
 	// These will only be used with Kubernetes v1.22+.
 	// Defaults to {"cpu": "1", "memory": "4G"}
 	ExtendedResources KubemarkExtendedResourceList `json:"extendedResources,omitempty"`
+
+	// RegisterWithTaints is an array of Taints that will be applied to created
+	// nodes. Taints applied this way will be injected as command line flags to
+	// the kubemark process.
+	// Defaults to no taints
+	RegisterWithTaints []corev1.Taint `json:"registerWithTaints,omitempty"`
+
+	// NodeLabels is a map of labels to that will be applied created nodes.
+	// Labels applied this way will be injected as command line flags to the
+	// kubemark process.
+	// Defaults to no labels
+	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 }
 
 // KubemarkMachineStatus defines the observed state of KubemarkMachine.
