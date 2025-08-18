@@ -13,7 +13,7 @@ jobs:
         working-directory:
           - ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
