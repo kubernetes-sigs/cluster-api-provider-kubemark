@@ -19,11 +19,11 @@ CERT_MANAGER_CAINJECTOR ?= cert-manager-cainjector
 CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
 CERT_MANAGER_VERSION ?= v1.12.2
-KUBE_RBAC_PROXY_VERSION ?= v0.5.0
-KUBE_RBAC_IMAGE_REPOSITORY ?= quay.io/coreos
+KUBE_RBAC_PROXY_VERSION ?= v0.13.0
+KUBE_RBAC_IMAGE_REPOSITORY ?= gcr.io/kubebuilder
 KUBE_RBAC_PROXY ?= kube-rbac-proxy
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.9.99
+CAPI_VERSION := v1.10.99
 XDG_CONFIG_HOME ?= $(HOME)/.config
 
 .start-kind-cluster:
