@@ -42,9 +42,9 @@ GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/golangci-lint)
 KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/kustomize)
 
 # Define Docker related variables. Releases should modify and double check these vars.
-REGISTRY ?= gcr.io/$(shell gcloud config get-value project)
-STAGING_REGISTRY := gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark-staging
-PROD_REGISTRY ?= gcr.io/cf-london-servces-k8s/bmo/cluster-api-kubemark
+REGISTRY ?= quay.io/cluster-api-provider-kubemark
+STAGING_REGISTRY := quay.io/cluster-api-provider-kubemark
+PROD_REGISTRY ?= quay.io/cluster-api-provider-kubemark
 IMAGE_NAME ?= cluster-api-kubemark-controller
 CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 TAG ?= dev
