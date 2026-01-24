@@ -43,7 +43,7 @@ import (
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/utils/ptr"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/certs"
@@ -84,7 +84,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		For(&infrav1.KubemarkMachine{}).
 		WithOptions(options).
 		Watches(
-			&clusterv1beta1.Machine{},
+			&clusterv1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
@@ -98,7 +98,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
 	err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1beta1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterPausedTransitionsOrInfrastructureReady(r.Scheme, ctrl.LoggerFrom(ctx))),
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterPausedTransitionsOrInfrastructureProvisioned(r.Scheme, ctrl.LoggerFrom(ctx))),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed adding Watch for Clusters to KubemarkMachines")
@@ -224,15 +224,15 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}()
 
+	if cluster.Status.Initialization.InfrastructureProvisioned == nil || !*cluster.Status.Initialization.InfrastructureProvisioned {
+		log.Info("Cluster infrastructure is not ready yet")
+		return ctrl.Result{}, nil
+	}
+
 	restConfig, err := getRemoteCluster(ctx, r.Client, cluster)
 	if err != nil {
 		log.Error(err, "error getting remote cluster")
 		return ctrl.Result{}, err
-	}
-
-	if !cluster.Status.InfrastructureReady {
-		log.Info("Cluster infrastructure is not ready yet")
-		return ctrl.Result{}, nil
 	}
 	if machine.Spec.Bootstrap.DataSecretName == nil {
 		log.Info("Bootstrap data secret reference is not yet available")
@@ -324,7 +324,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}
 	version := machine.Spec.Version
-	if version == nil {
+	if version == "" {
 		err := errors.New("Machine has no spec.version")
 		log.Error(err, "")
 		return ctrl.Result{}, err
@@ -343,7 +343,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		log.Error(err, "Unable to create version constraint")
 		return ctrl.Result{}, err
 	}
-	v, err := semver.NewVersion(*version)
+	v, err := semver.NewVersion(version)
 	if err != nil {
 		log.Error(err, "Unable to create version constraint")
 		return ctrl.Result{}, err
@@ -355,7 +355,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		kubemarkArgs = append(kubemarkArgs, extendedResourcesFlag)
 	} else if kubemarkMachine.Spec.KubemarkOptions.ExtendedResources != nil {
 		err := errors.New("Kubernetes version is too low to support extended resources, must be >=1.22.0")
-		log.Error(err, "observed version: %s", *version)
+		log.Error(err, "observed version: %s", version)
 		return ctrl.Result{}, err
 	}
 
@@ -375,7 +375,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			Containers: []corev1.Container{
 				{
 					Name:    kubemarkName,
-					Image:   fmt.Sprintf("%s:%s", r.KubemarkImage, *version),
+					Image:   fmt.Sprintf("%s:%s", r.KubemarkImage, version),
 					Args:    kubemarkArgs,
 					Command: []string{"/kubemark"},
 					SecurityContext: &corev1.SecurityContext{
@@ -443,9 +443,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return ctrl.Result{}, err
 		}
 	}
-	providerID := ptr.To(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	providerID := fmt.Sprintf("kubemark://%s", kubemarkMachine.Name)
 	machine.Spec.ProviderID = providerID
-	kubemarkMachine.Spec.ProviderID = providerID
+	kubemarkMachine.Spec.ProviderID = &providerID
 	kubemarkMachine.Status.Ready = true
 
 	return ctrl.Result{}, nil
@@ -485,7 +485,7 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 	return runtime.Encode(clientcmdlatest.Codec, kubeconfigData)
 }
 
-func getRemoteCluster(ctx context.Context, mgmtClient client.Reader, cluster *clusterv1beta1.Cluster) (*restclient.Config, error) {
+func getRemoteCluster(ctx context.Context, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	restConfig, err := remote.RESTConfig(ctx, MachineControllerName, mgmtClient, util.ObjectKey(cluster))
