@@ -3,21 +3,16 @@ run:
   go: "1.23"
   build-tags:
     - tools
-  skip-files:
-    - "zz_generated.*\\.go$"
   allow-parallel-runners: true
-
 linters:
   disable-all: true
   enable:
     - asciicheck
     - bodyclose
-    - depguard
     - dogsled
     # - dupword enable as soon as we bump golangci to lastest versions
     - durationcheck
     - errcheck
-    - exportloopref
     - gci
     - goconst
     - gocritic
@@ -58,7 +53,10 @@ linters-settings:
       - '^ \+.*'
       - '^ ANCHOR.*'
   gci:
-    local-prefixes: "sigs.k8s.io/cluster-api-provider-kubemark"
+    sections:
+      - standard # Standard section: captures all standard packages.
+      - default # Default section: contains all imports that could not be matched to another section type.
+      - prefix(sigs.k8s.io/cluster-api-provider-kubemark) # Custom section: groups all imports with the specified Prefix.
   importas:
     no-unaliased: true
     alias:
@@ -166,6 +164,8 @@ issues:
   # We are disabling default golangci exclusions because we want to help reviewers to focus on reviewing the most relevant
   # changes in PRs and avoid nitpicking.
   exclude-use-default: false
+  exclude-files:
+    - "zz_generated.*\\.go$"
   exclude-rules:
     - linters:
         - revive
