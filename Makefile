@@ -121,7 +121,7 @@ generate-go: $(CONTROLLER_GEN) $(CONVERSION_GEN) ## Runs Go related generate tar
 		object:headerFile=./hack/boilerplate/boilerplate.generatego.txt \
 		paths=./api/...
 	$(CONVERSION_GEN) \
-		--extra-peer-dirs=sigs.k8s.io/cluster-api/api/v1beta1 \
+		--extra-peer-dirs=sigs.k8s.io/cluster-api/api/core/v1beta1 \
 		--output-file=zz_generated.conversion.go \
 		--go-header-file=./hack/boilerplate/boilerplate.generatego.txt \
 		./api/v1alpha4

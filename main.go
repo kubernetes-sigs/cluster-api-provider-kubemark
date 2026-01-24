@@ -36,8 +36,8 @@ import (
 	logsv1 "k8s.io/component-base/logs/api/v1"
 	_ "k8s.io/component-base/logs/json/register"
 	klog "k8s.io/klog/v2"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
+	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/flags"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -59,7 +59,7 @@ func init() {
 
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = infrav1.AddToScheme(scheme)
-	_ = clusterv1beta1.AddToScheme(scheme)
+	_ = clusterv1.AddToScheme(scheme)
 	_ = bootstrapv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
@@ -116,7 +116,7 @@ func InitFlags(fs *pflag.FlagSet) {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
 
 	fs.StringVar(&watchFilterValue, "watch-filter", "",
-		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1beta1.WatchLabel))
+		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1.WatchLabel))
 
 	fs.IntVar(&webhookPort, "webhook-port", 9443,
 		"Webhook Server port")
