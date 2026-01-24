@@ -98,7 +98,6 @@ linters-settings:
         alias: expv1
   nolintlint:
     allow-unused: false
-    allow-leading-space: false
     require-specific: true
   revive:
     rules:

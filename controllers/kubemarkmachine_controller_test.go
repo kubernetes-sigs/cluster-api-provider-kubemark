@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -188,7 +187,7 @@ func mapFromFlags(prefix, flags string) (map[string]string, error) {
 	}
 
 	if !strings.HasPrefix(flags, prefix) {
-		return nil, errors.New(fmt.Sprintf("extended resources flag does not contain proper prefix `%s`, `%s`", prefix, flags))
+		return nil, fmt.Errorf("extended resources flag does not contain proper prefix `%s`, `%s`", prefix, flags)
 	}
 
 	ret := map[string]string{}
@@ -199,7 +198,7 @@ func mapFromFlags(prefix, flags string) (map[string]string, error) {
 		// split the resource string into its key and value
 		rsplit := strings.Split(r, "=")
 		if len(rsplit) != 2 {
-			return nil, errors.New(fmt.Sprintf("unable to split resource pair `%s` in `%s`", r, flags))
+			return nil, fmt.Errorf("unable to split resource pair `%s` in `%s`", r, flags)
 		}
 		ret[rsplit[0]] = rsplit[1]
 	}

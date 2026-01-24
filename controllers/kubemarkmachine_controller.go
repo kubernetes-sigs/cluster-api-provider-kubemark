@@ -42,8 +42,8 @@ import (
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
-	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"k8s.io/utils/ptr"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/certs"
@@ -62,7 +62,7 @@ import (
 
 const (
 	kubemarkName             = "hollow-node"
-	kubemarkSecretNameSuffix = "kubemark-config"
+	kubemarkSecretNameSuffix = "kubemark-config" //nolint:gosec
 
 	// MachineControllerName defines the user-agent name used when creating rest clients.
 	MachineControllerName = "kubemarkmachine-controller"
@@ -84,7 +84,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		For(&infrav1.KubemarkMachine{}).
 		WithOptions(options).
 		Watches(
-			&clusterv1.Machine{},
+			&clusterv1beta1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("KubemarkMachine"))),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(r.Scheme, ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
@@ -98,7 +98,7 @@ func (r *KubemarkMachineReconciler) SetupWithManager(ctx context.Context, mgr ct
 		return errors.Wrap(err, "failed create MapFunc for Watch for Clusters to KubemarkMachines")
 	}
 	err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterUnpausedAndInfrastructureReady(r.Scheme, ctrl.LoggerFrom(ctx))),
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1beta1.Cluster{}, handler.EnqueueRequestsFromMapFunc(clusterToKubemarkMachines), predicates.ClusterPausedTransitionsOrInfrastructureReady(r.Scheme, ctrl.LoggerFrom(ctx))),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed adding Watch for Clusters to KubemarkMachines")
@@ -119,8 +119,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	log := ctrl.LoggerFrom(ctx).WithValues("kubemarkmachine", req.NamespacedName)
 
 	kubemarkMachine := &infrav1.KubemarkMachine{}
-	err := r.Get(ctx, req.NamespacedName, kubemarkMachine) //nolint for some reason this is causing issues with the golangci-lint typecheck
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, kubemarkMachine); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -241,7 +240,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	var caSecret corev1.Secret
-	if err := r.Get(ctx, client.ObjectKey{ //nolint for some reason this is causing issues with the golangci-lint typecheck
+	if err := r.Get(ctx, client.ObjectKey{
 		Name:      secret.Name(cluster.Name, secret.ClusterCA),
 		Namespace: cluster.Namespace,
 	}, &caSecret); err != nil {
@@ -380,7 +379,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 					Args:    kubemarkArgs,
 					Command: []string{"/kubemark"},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: pointer.BoolPtr(true),
+						Privileged: ptr.To(true),
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -444,7 +443,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return ctrl.Result{}, err
 		}
 	}
-	providerID := pointer.String(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
+	providerID := ptr.To(fmt.Sprintf("kubemark://%s", kubemarkMachine.Name))
 	machine.Spec.ProviderID = providerID
 	kubemarkMachine.Spec.ProviderID = providerID
 	kubemarkMachine.Status.Ready = true
@@ -486,7 +485,7 @@ func generateCertificateKubeconfig(bootstrapClientConfig *restclient.Config, pem
 	return runtime.Encode(clientcmdlatest.Codec, kubeconfigData)
 }
 
-func getRemoteCluster(ctx context.Context, mgmtClient client.Reader, cluster *clusterv1.Cluster) (*restclient.Config, error) {
+func getRemoteCluster(ctx context.Context, mgmtClient client.Reader, cluster *clusterv1beta1.Cluster) (*restclient.Config, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	restConfig, err := remote.RESTConfig(ctx, MachineControllerName, mgmtClient, util.ObjectKey(cluster))

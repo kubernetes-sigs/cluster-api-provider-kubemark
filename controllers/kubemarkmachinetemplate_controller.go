@@ -58,7 +58,7 @@ func (r *KubemarkMachineTemplateReconciler) Reconcile(ctx context.Context, req c
 	updateRequired := false
 
 	var machineTemplate infrav1.KubemarkMachineTemplate
-	if err := r.Get(ctx, req.NamespacedName, &machineTemplate); err != nil { //nolint for some reason this is causing issues with the golangci-lint typecheck
+	if err := r.Get(ctx, req.NamespacedName, &machineTemplate); err != nil {
 		log.Error(err, "unable to fetch KubemarkMachineTemplate")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}

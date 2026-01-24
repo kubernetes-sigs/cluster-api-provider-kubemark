@@ -16,11 +16,11 @@ limitations under the License.
 
 package v1alpha4
 
-import clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+import clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 const (
 	// InstanceReadyCondition reports on current status of the EC2 instance. Ready indicates the instance is in a Running state.
-	InstanceReadyCondition clusterv1.ConditionType = "InstanceReady"
+	InstanceReadyCondition clusterv1beta1.ConditionType = "InstanceReady"
 
 	// InstanceNotFoundReason used when the instance couldn't be retrieved.
 	InstanceNotFoundReason = "InstanceNotFound"
