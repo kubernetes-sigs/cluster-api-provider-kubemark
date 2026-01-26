@@ -28,7 +28,6 @@ spec:
       - command:
         - /manager
         args:
-        - "--diagnostics-address=127.0.0.1:8080"
         - "--leader-elect"
         image: controller:latest
         name: manager
