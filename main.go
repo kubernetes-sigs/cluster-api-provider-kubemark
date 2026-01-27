@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package main contains the main entrypoint for the Kubemark provider.
 package main
 
 import (
@@ -35,7 +36,7 @@ import (
 	logsv1 "k8s.io/component-base/logs/api/v1"
 	_ "k8s.io/component-base/logs/json/register"
 	klog "k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/flags"
@@ -47,7 +48,6 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-kubemark/controllers"
-	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -60,7 +60,7 @@ func init() {
 
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = infrav1.AddToScheme(scheme)
-	_ = clusterv1.AddToScheme(scheme)
+	_ = clusterv1beta1.AddToScheme(scheme)
 	_ = bootstrapv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
@@ -121,7 +121,7 @@ func InitFlags(fs *pflag.FlagSet) {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
 
 	fs.StringVar(&watchFilterValue, "watch-filter", "",
-		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1.WatchLabel))
+		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1beta1.WatchLabel))
 
 	fs.IntVar(&webhookPort, "webhook-port", 9443,
 		"Webhook Server port")
@@ -139,7 +139,7 @@ func InitFlags(fs *pflag.FlagSet) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 
 	InitFlags(pflag.CommandLine)
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
@@ -157,7 +157,7 @@ func main() {
 	if profilerAddress != "" {
 		klog.Infof("Profiler listening for requests at %s", profilerAddress)
 		go func() {
-			klog.Info(http.ListenAndServe(profilerAddress, nil))
+			klog.Info(http.ListenAndServe(profilerAddress, nil)) //nolint:gosec
 		}()
 	}
 
@@ -179,7 +179,7 @@ func main() {
 		Cache: cache.Options{
 			SyncPeriod: &syncPeriod,
 			DefaultNamespaces: map[string]cache.Config{
-				watchNamespace: cache.Config{},
+				watchNamespace: {},
 			},
 		},
 		WebhookServer: &webhook.DefaultServer{

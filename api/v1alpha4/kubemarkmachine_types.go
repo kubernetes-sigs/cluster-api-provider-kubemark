@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // KubemarkExtendedResourceName defines names for KubemarkExtendedResourceList.
@@ -114,7 +114,7 @@ type KubemarkMachineStatus struct {
 
 	// Conditions defines current service state of the DockerMachine.
 	// +optional
-	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:subresource:status
@@ -130,12 +130,12 @@ type KubemarkMachine struct {
 }
 
 // GetConditions returns the set of conditions for this object.
-func (c *KubemarkMachine) GetConditions() clusterv1.Conditions {
+func (c *KubemarkMachine) GetConditions() clusterv1beta1.Conditions {
 	return c.Status.Conditions
 }
 
 // SetConditions sets the conditions on this object.
-func (c *KubemarkMachine) SetConditions(conditions clusterv1.Conditions) {
+func (c *KubemarkMachine) SetConditions(conditions clusterv1beta1.Conditions) {
 	c.Status.Conditions = conditions
 }
 
