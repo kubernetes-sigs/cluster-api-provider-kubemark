@@ -43,7 +43,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-kubemark/api/v1alpha4"
@@ -66,7 +65,6 @@ func init() {
 }
 
 var (
-	metricsBindAddr                    string
 	enableLeaderElection               bool
 	leaderElectionLeaseDuration        time.Duration
 	leaderElectionRenewDeadline        time.Duration
@@ -89,9 +87,6 @@ var (
 func InitFlags(fs *pflag.FlagSet) {
 	logs.AddFlags(fs, logs.SkipLoggingConfigurationFlags())
 	logsv1.AddFlags(logOptions, fs)
-
-	fs.StringVar(&metricsBindAddr, "metrics-bind-addr", "localhost:8080",
-		"The address the metric endpoint binds to.")
 
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -161,7 +156,7 @@ func main() {
 		}()
 	}
 
-	tlsOptionOverrides, _, err := flags.GetManagerOptions(managerOptions)
+	tlsOptionOverrides, metricsOptions, err := flags.GetManagerOptions(managerOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to add TLS settings to the webhook server")
 		os.Exit(1)
@@ -169,7 +164,7 @@ func main() {
 
 	mgr, err := ctrl.NewManager(getConfig(), ctrl.Options{
 		Scheme:                     scheme,
-		Metrics:                    metricsserver.Options{BindAddress: metricsBindAddr},
+		Metrics:                    *metricsOptions,
 		LeaderElection:             enableLeaderElection,
 		LeaderElectionID:           "kubemark-manager-leader-election-capi",
 		LeaseDuration:              &leaderElectionLeaseDuration,
