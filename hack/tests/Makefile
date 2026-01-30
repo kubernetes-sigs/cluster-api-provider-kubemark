@@ -20,7 +20,7 @@ CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
 CERT_MANAGER_VERSION ?= v1.12.2
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.10.99
+CAPI_VERSION := v1.11.99
 XDG_CONFIG_HOME ?= $(HOME)/.config
 
 .start-kind-cluster:

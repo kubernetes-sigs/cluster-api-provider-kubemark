@@ -22,6 +22,5 @@ package tools
 
 import (
 	_ "k8s.io/code-generator/cmd/conversion-gen"
-	_ "sigs.k8s.io/cluster-api/hack/tools/release"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
 )

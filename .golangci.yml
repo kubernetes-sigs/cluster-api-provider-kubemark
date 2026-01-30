@@ -1,6 +1,6 @@
 run:
   timeout: 10m
-  go: "1.23"
+  go: "1.24"
   build-tags:
     - tools
   allow-parallel-runners: true
@@ -77,25 +77,27 @@ linters-settings:
       - pkg: sigs.k8s.io/controller-runtime
         alias: ctrl
       # CABPK
-      - pkg: sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1
+      - pkg: sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta1
         alias: bootstrapv1
       # KCP
-      - pkg: sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1
+      - pkg: sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta1
         alias: controlplanev1
       # CAPI
-      - pkg: sigs.k8s.io/cluster-api/api/v1beta1
+      - pkg: sigs.k8s.io/cluster-api/api/core/v1beta2
+        alias: clusterv1
+      - pkg: sigs.k8s.io/cluster-api/api/core/v1beta1
         alias: clusterv1beta1
       - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch
         alias: v1beta1patch
       - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions
         alias: v1beta1conditions
       # CAPI exp
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha3
-        alias: expv1alpha3
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha4
-        alias: expv1alpha4
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1beta1
-        alias: expv1
+      - pkg: sigs.k8s.io/cluster-api/api/ipam/v1beta1
+        alias: ipamv1
+      - pkg: sigs.k8s.io/cluster-api/api/addons/v1beta1
+        alias: addonsv1
+      - pkg: sigs.k8s.io/cluster-api/api/runtime/v1alpha1
+        alias: runtimev1
   nolintlint:
     allow-unused: false
     require-specific: true
@@ -169,3 +171,7 @@ issues:
     - linters:
         - revive
       text: "exported: exported method .*\\.(Reconcile|SetupWithManager|SetupWebhookWithManager) should have comment or be unexported"
+    # Exclude deprecation warnings for v1beta1 CAPI APIs until migration to v1beta2 is complete
+    - linters:
+        - staticcheck
+      text: "SA1019:.*is deprecated.*support for v1beta1 will be dropped"
