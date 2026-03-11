@@ -33,11 +33,22 @@ export DOCKER_CLI_EXPERIMENTAL := enabled
 # Directories.
 BIN_DIR := bin
 TOOLS_DIR := hack/tools
-TOOLS_BIN_DIR := $(TOOLS_DIR)/$(BIN_DIR)
+TOOLS_BIN_DIR := $(abspath $(TOOLS_DIR)/$(BIN_DIR))
+GO_INSTALL := ./hack/go-install.sh
 
 # Binaries.
-CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/controller-gen)
-CONVERSION_GEN := $(abspath $(TOOLS_BIN_DIR)/conversion-gen)
+CONTROLLER_GEN_VER := v0.20.0
+CONTROLLER_GEN_BIN := controller-gen
+CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
+CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
+
+CONVERSION_GEN_VER := v0.35.0
+CONVERSION_GEN_BIN := conversion-gen
+# We are intentionally using the binary without version suffix, to avoid the version
+# in generated files. (inspired by CAPV)
+CONVERSION_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONVERSION_GEN_BIN))
+CONVERSION_GEN_PKG := k8s.io/code-generator/cmd/conversion-gen
+
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/golangci-lint)
 KUSTOMIZE := $(abspath $(TOOLS_BIN_DIR)/kustomize)
 
@@ -77,11 +88,24 @@ test-e2e: ## Launch integration e2e test with building images (for local usage)
 manager: ## Build manager binary
 	go build -o $(BIN_DIR)/manager sigs.k8s.io/cluster-api-provider-kubemark
 
-$(CONTROLLER_GEN): $(TOOLS_DIR)/go.mod # Build controller-gen from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/controller-gen sigs.k8s.io/controller-tools/cmd/controller-gen
+## --------------------------------------
+## Hack / Tools
+## --------------------------------------
 
-$(CONVERSION_GEN): $(TOOLS_DIR)/go.mod
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/conversion-gen k8s.io/code-generator/cmd/conversion-gen
+.PHONY: $(CONTROLLER_GEN_BIN)
+$(CONTROLLER_GEN_BIN): $(CONTROLLER_GEN)
+
+.PHONY: $(CONVERSION_GEN_BIN)
+$(CONVERSION_GEN_BIN): $(CONVERSION_GEN)
+
+$(CONTROLLER_GEN):
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONTROLLER_GEN_PKG) $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
+
+## We are forcing a rebuilt of conversion-gen via PHONY so that we're always using an up-to-date version.
+## We can't use a versioned name for the binary, because that would be reflected in generated files. (inspired by CAPV)
+.PHONY: $(CONVERSION_GEN)
+$(CONVERSION_GEN):
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONVERSION_GEN_PKG) $(CONVERSION_GEN_BIN) $(CONVERSION_GEN_VER)
 
 $(GOLANGCI_LINT): .github/workflows/golangci-lint.yml # Download golanci-lint using hack script into tools folder.
 	hack/ensure-golangci-lint.sh \
@@ -90,6 +114,7 @@ $(GOLANGCI_LINT): .github/workflows/golangci-lint.yml # Download golanci-lint us
 
 $(KUSTOMIZE): # Build kustomize from tools folder.
 	hack/ensure-kustomize.sh
+
 ## --------------------------------------
 ## Linting
 ## --------------------------------------
