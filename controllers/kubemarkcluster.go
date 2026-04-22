@@ -50,7 +50,7 @@ func (w *kubemarkCluster) GenerateKubemarkClusterClient(kubemarkClusterSecretRef
 
 	kubemarkClusterKubeconfigSecret := &corev1.Secret{}
 	kubemarkClusterKubeconfigSecretKey := client.ObjectKey{Namespace: kubemarkClusterSecretRef.Namespace, Name: kubemarkClusterSecretRef.Name}
-	if err := w.Client.Get(context, kubemarkClusterKubeconfigSecretKey, kubemarkClusterKubeconfigSecret); err != nil {
+	if err := w.Get(context, kubemarkClusterKubeconfigSecretKey, kubemarkClusterKubeconfigSecret); err != nil {
 		return nil, "", errors.Wrapf(err, "failed to fetch kubemark cluster kubeconfig secret %s/%s", kubemarkClusterSecretRef.Namespace, kubemarkClusterSecretRef.Name)
 	}
 
@@ -73,7 +73,7 @@ func (w *kubemarkCluster) GenerateKubemarkClusterClient(kubemarkClusterSecretRef
 	}
 
 	// create the client
-	kubemarkClusterClient, err := client.New(restConfig, client.Options{Scheme: w.Client.Scheme()})
+	kubemarkClusterClient, err := client.New(restConfig, client.Options{Scheme: w.Scheme()})
 	if err != nil {
 		return nil, "", errors.Wrap(err, "failed to create kubemark cluster client")
 	}

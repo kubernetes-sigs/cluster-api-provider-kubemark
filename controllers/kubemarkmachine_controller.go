@@ -178,7 +178,7 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	if !kubemarkMachine.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !kubemarkMachine.DeletionTimestamp.IsZero() {
 		log.Info("deleting machine")
 
 		if err := kubemarkClusterClient.Delete(ctx, &corev1.Pod{
