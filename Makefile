@@ -127,10 +127,6 @@ lint: $(GOLANGCI_LINT) ## Lint codebase
 lint-fix: $(GOLANGCI_LINT) ## Lint the codebase and run auto-fixers if supported by the linter
 	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
 
-.PHONY: lint-full
-lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
-	GOLANGCI_LINT_EXTRA_ARGS=--fast=false $(MAKE) lint
-
 ## --------------------------------------
 ## Generate / Manifests
 ## --------------------------------------
@@ -283,7 +279,7 @@ clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
 .PHONY: verify
-verify: lint-full ## Runs all the verifier
+verify: lint ## Runs all the verifier
 	./hack/verify-boilerplate.sh
 	./hack/verify-shellcheck.sh
 	$(MAKE) verify-modules
