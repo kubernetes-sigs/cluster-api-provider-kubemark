@@ -1,27 +1,22 @@
+version: "2"
 run:
-  timeout: 10m
   go: "1.23"
   build-tags:
     - tools
   allow-parallel-runners: true
 linters:
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bodyclose
     - dogsled
-    # - dupword enable as soon as we bump golangci to lastest versions
     - durationcheck
     - errcheck
-    - gci
     - goconst
     - gocritic
     - godot
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - importas
     - ineffassign
@@ -35,137 +30,135 @@ linters:
     - revive
     - rowserrcheck
     - staticcheck
-    - stylecheck
     - thelper
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-
-linters-settings:
-  godot:
-    #   declarations - for top level declaration comments (default);
-    #   toplevel     - for top level comments;
-    #   all          - for all comments.
-    scope: toplevel
-    exclude:
-      - '^ \+.*'
-      - '^ ANCHOR.*'
-  gci:
-    sections:
-      - standard # Standard section: captures all standard packages.
-      - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(sigs.k8s.io/cluster-api-provider-kubemark) # Custom section: groups all imports with the specified Prefix.
-  importas:
-    no-unaliased: true
-    alias:
-      # Kubernetes
-      - pkg: k8s.io/api/core/v1
-        alias: corev1
-      - pkg: k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-        alias: apiextensionsv1
-      - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
-        alias: metav1
-      - pkg: k8s.io/apimachinery/pkg/api/errors
-        alias: apierrors
-      - pkg: k8s.io/apimachinery/pkg/util/errors
-        alias: kerrors
-      - pkg: k8s.io/component-base/logs/api/v1
-        alias: logsv1
-      # Controller Runtime
-      - pkg: sigs.k8s.io/controller-runtime
-        alias: ctrl
-      # CABPK
-      - pkg: sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1
-        alias: bootstrapv1
-      # KCP
-      - pkg: sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1
-        alias: controlplanev1
-      # CAPI
-      - pkg: sigs.k8s.io/cluster-api/api/v1beta1
-        alias: clusterv1beta1
-      - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch
-        alias: v1beta1patch
-      - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions
-        alias: v1beta1conditions
-      # CAPI exp
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha3
-        alias: expv1alpha3
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha4
-        alias: expv1alpha4
-      - pkg: sigs.k8s.io/cluster-api/exp/api/v1beta1
-        alias: expv1
-  nolintlint:
-    allow-unused: false
-    require-specific: true
-  revive:
+  settings:
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - dupImport
+        - evalOrder
+        - ifElseChain
+        - octalLiteral
+        - regexpSimplify
+        - sloppyReassign
+        - truncateCmp
+        - typeDefFirst
+        - unnamedResult
+        - unnecessaryDefer
+        - whyNoLint
+        - wrapperFunc
+        - rangeValCopy
+        - hugeParam
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - performance
+    godot:
+      scope: toplevel
+      exclude:
+        - ^ \+.*
+        - ^ ANCHOR.*
+    gosec:
+      excludes:
+        - G307
+        - G108
+    importas:
+      alias:
+        - pkg: k8s.io/api/core/v1
+          alias: corev1
+        - pkg: k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+          alias: apiextensionsv1
+        - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
+          alias: metav1
+        - pkg: k8s.io/apimachinery/pkg/api/errors
+          alias: apierrors
+        - pkg: k8s.io/apimachinery/pkg/util/errors
+          alias: kerrors
+        - pkg: k8s.io/component-base/logs/api/v1
+          alias: logsv1
+        - pkg: sigs.k8s.io/controller-runtime
+          alias: ctrl
+        - pkg: sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1
+          alias: bootstrapv1
+        - pkg: sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1
+          alias: controlplanev1
+        - pkg: sigs.k8s.io/cluster-api/api/v1beta1
+          alias: clusterv1beta1
+        - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch
+          alias: v1beta1patch
+        - pkg: sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions
+          alias: v1beta1conditions
+        - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha3
+          alias: expv1alpha3
+        - pkg: sigs.k8s.io/cluster-api/exp/api/v1alpha4
+          alias: expv1alpha4
+        - pkg: sigs.k8s.io/cluster-api/exp/api/v1beta1
+          alias: expv1
+      no-unaliased: true
+    nolintlint:
+      require-specific: true
+      allow-unused: false
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: bool-literal-in-expr
+        - name: constant-logical-expr
+  exclusions:
+    generated: lax
     rules:
-      # The following rules are recommended https://github.com/mgechev/revive#recommended-configuration
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-      #
-      # Rules in addition to the recommended configuration above.
-      #
-      - name: bool-literal-in-expr
-      - name: constant-logical-expr
-  gosec:
-    excludes:
-      - G307 # Deferring unsafe method "Close" on type "\*os.File"
-      - G108 # Profiling endpoint is automatically exposed on /debug/pprof
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - performance
-    disabled-checks:
-      - appendAssign
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - evalOrder
-      - ifElseChain
-      - octalLiteral
-      - regexpSimplify
-      - sloppyReassign
-      - truncateCmp
-      - typeDefFirst
-      - unnamedResult
-      - unnecessaryDefer
-      - whyNoLint
-      - wrapperFunc
-      - rangeValCopy
-      - hugeParam
-
+      - linters:
+          - revive
+        text: 'exported: exported method .*\.(Reconcile|SetupWithManager|SetupWebhookWithManager) should have comment or be unexported'
+    paths:
+      - zz_generated.*\.go$
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  max-same-issues: 0
   max-issues-per-linter: 0
-  # We are disabling default golangci exclusions because we want to help reviewers to focus on reviewing the most relevant
-  # changes in PRs and avoid nitpicking.
-  exclude-use-default: false
-  exclude-files:
-    - "zz_generated.*\\.go$"
-  exclude-rules:
-    - linters:
-        - revive
-      text: "exported: exported method .*\\.(Reconcile|SetupWithManager|SetupWebhookWithManager) should have comment or be unexported"
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(sigs.k8s.io/cluster-api-provider-kubemark)
+  exclusions:
+    generated: lax
+    paths:
+      - zz_generated.*\.go$
+      - third_party$
+      - builtin$
+      - examples$
