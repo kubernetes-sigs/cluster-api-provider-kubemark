@@ -57,12 +57,6 @@ spec:
         extraArgs:
           - name: enable-hostpath-provisioner
             value: "true"
-    initConfiguration:
-      nodeRegistration:
-        name: ''
-    joinConfiguration:
-      nodeRegistration:
-        name: ''
   machineTemplate:
     spec:
       infrastructureRef:
