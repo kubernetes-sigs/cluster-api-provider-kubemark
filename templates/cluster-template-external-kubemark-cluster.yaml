@@ -1,4 +1,4 @@
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineDeployment
 metadata:
   name: "${CLUSTER_NAME}-kubemark-external-md-0"
@@ -21,12 +21,12 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
           name: "${CLUSTER_NAME}-kubemark-external-md-0"
       clusterName: "${CLUSTER_NAME}"
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+        apiGroup: infrastructure.cluster.x-k8s.io
         kind: KubemarkMachineTemplate
         name: "${CLUSTER_NAME}-kubemark-external-md-0"
       version: "${KUBERNETES_VERSION}"
@@ -56,7 +56,7 @@ spec:
         name: kubemark-cluster-kubeconfig
         namespace: capk-system
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
   name: "${CLUSTER_NAME}-kubemark-external-md-0"
