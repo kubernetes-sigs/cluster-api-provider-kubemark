@@ -45,10 +45,11 @@ metadata:
 spec:
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   machineTemplate:
-    infrastructureRef:
-      apiGroup: infrastructure.cluster.x-k8s.io
-      kind: DockerMachineTemplate
-      name: "${CLUSTER_NAME}-control-plane"
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: DockerMachineTemplate
+        name: "${CLUSTER_NAME}-control-plane"
   kubeadmConfigSpec:
     clusterConfiguration:
       controllerManager:

@@ -62,10 +62,11 @@ spec:
     joinConfiguration:
       nodeRegistration: {}
   machineTemplate:
-    infrastructureRef:
-      apiGroup: infrastructure.cluster.x-k8s.io
-      kind: DockerMachineTemplate
-      name: km-cp-control-plane
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: DockerMachineTemplate
+        name: km-cp-control-plane
   replicas: 1
   version: v1.33.4
 
