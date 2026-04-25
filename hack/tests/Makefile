@@ -159,7 +159,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 	@echo "\nCreating tenant cluster hollow nodes..."
 	@kubectl apply -f $(TEST_DIR)/resources/kubemark-machine-deployment.yaml
 	@sleep 30
-	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=1m
+	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=3m
 	@echo "Created tenant cluster hollow nodes."
 	
 .generate-tenant-cluster-kubeconfig:
