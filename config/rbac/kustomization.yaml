@@ -5,3 +5,5 @@ resources:
 - leader_election_role_binding.yaml
 - metrics_service.yaml
 - metrics_reader_clusterrole.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
