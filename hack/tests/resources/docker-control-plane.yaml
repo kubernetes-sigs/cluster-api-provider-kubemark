@@ -58,9 +58,11 @@ spec:
           - name: enable-hostpath-provisioner
             value: "true"
     initConfiguration:
-      nodeRegistration: {}
+      nodeRegistration:
+        name: ''
     joinConfiguration:
-      nodeRegistration: {}
+      nodeRegistration:
+        name: ''
   machineTemplate:
     spec:
       infrastructureRef:
