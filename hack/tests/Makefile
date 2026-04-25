@@ -151,7 +151,7 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .create-tenant-cluster-control-plane:
 	@echo "\nCreating tenant cluster control plane..."
 	@kubectl apply -f $(TEST_DIR)/resources/docker-control-plane.yaml
-	@kubectl wait cluster km-cp --for=condition=Ready=true --timeout=3m
+	@kubectl wait cluster km-cp --for=condition=InfrastructureReady=true --timeout=3m
 	@echo "\nCreated tenant cluster control plane:"
 	@$(CAPI_PATH)/bin/clusterctl describe cluster km-cp
 
