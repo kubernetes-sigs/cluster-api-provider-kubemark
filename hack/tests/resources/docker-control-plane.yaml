@@ -55,7 +55,8 @@ spec:
         - host.docker.internal
       controllerManager:
         extraArgs:
-          enable-hostpath-provisioner: "true"
+          - name: enable-hostpath-provisioner
+            value: "true"
     initConfiguration:
       nodeRegistration: {}
     joinConfiguration:
