@@ -26,5 +26,5 @@ configurations:
 - kustomizeconfig.yaml
 
 commonLabels:
-  cluster.x-k8s.io/v1alpha4: v1alpha4
   cluster.x-k8s.io/v1beta1: v1alpha4
+  cluster.x-k8s.io/v1beta2: v1alpha4
