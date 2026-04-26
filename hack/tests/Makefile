@@ -22,9 +22,14 @@ CERT_MANAGER_VERSION ?= v1.12.2
 DEV_REGISTRY ?= localhost:5000
 CAPI_VERSION := v1.11.99
 XDG_CONFIG_HOME ?= $(HOME)/.config
+TEST_CLUSTER_NAME := km-cp
 
 .start-kind-cluster:
 	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
+
+.delete-kind-clusters:
+	@kind delete cluster --name $(TEST_CLUSTER_NAME)
+	@kind delete cluster
 
 .install-cert-manager:
 	@docker pull $(CERT_MANAGER_IMAGE_REPOSITORY)/$(CERT_MANAGER_CAINJECTOR):$(CERT_MANAGER_VERSION)
@@ -151,9 +156,9 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .create-tenant-cluster-control-plane:
 	@echo "\nCreating tenant cluster control plane..."
 	@kubectl apply -f $(TEST_DIR)/resources/docker-control-plane.yaml
-	@kubectl wait cluster km-cp --for=condition=InfrastructureReady=true --timeout=3m
+	@kubectl wait cluster $(TEST_CLUSTER_NAME) --for=condition=InfrastructureReady=true --timeout=3m
 	@echo "\nCreated tenant cluster control plane:"
-	@$(CAPI_PATH)/bin/clusterctl describe cluster km-cp
+	@$(CAPI_PATH)/bin/clusterctl describe cluster $(TEST_CLUSTER_NAME) 
 
 .create-tenant-cluster-hollow-nodes:
 	@echo "\nCreating tenant cluster hollow nodes..."
@@ -164,8 +169,8 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 
 .generate-tenant-cluster-kubeconfig:
 	@echo "\nGenerating tenant cluster kubeconfig..."
-	@$(CAPI_PATH)/bin/clusterctl get kubeconfig km-cp > /tmp/km.kubeconfig
-	@sed -i -e "s/server:.*/server: https:\/\/$$(docker port km-cp-lb 6443/tcp | sed "s/0.0.0.0/localhost/")/g" /tmp/km.kubeconfig
+	@$(CAPI_PATH)/bin/clusterctl get kubeconfig $(TEST_CLUSTER_NAME) > /tmp/km.kubeconfig
+	@sed -i -e "s/server:.*/server: https:\/\/$$(docker port $(TEST_CLUSTER_NAME)-lb 6443/tcp | sed "s/0.0.0.0/localhost/")/g" /tmp/km.kubeconfig
 	@sed -i -e "s/certificate-authority-data:.*/insecure-skip-tls-verify: true/g" /tmp/km.kubeconfig
 	@echo "\nGenerated tenant cluster kubeconfig:"
 	@cat /tmp/km.kubeconfig
@@ -184,6 +189,19 @@ test-e2e:	.start-kind-cluster \
 		.docker-build \
 		.create-local-repository \
 		.config-local-repository \
+		.deploy-cluster-api \
+		.create-tenant-cluster-control-plane \
+		.create-tenant-cluster-hollow-nodes \
+		.generate-tenant-cluster-kubeconfig \
+		.tenant-cluster-info
+
+.PHONY: teardown
+teardown: .delete-kind-clusters
+
+.PHONY: redeploy
+redeploy: .delete-kind-clusters \
+		.start-kind-cluster \
+		.install-cert-manager \
 		.deploy-cluster-api \
 		.create-tenant-cluster-control-plane \
 		.create-tenant-cluster-hollow-nodes \
