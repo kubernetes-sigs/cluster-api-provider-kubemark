@@ -163,13 +163,14 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 	@kubectl apply -f $(TEST_DIR)/resources/docker-control-plane.yaml
 	@kubectl wait cluster $(TEST_CLUSTER_NAME) --for=condition=InfrastructureReady=true --timeout=3m
 	@echo "\nCreated tenant cluster control plane:"
-	@$(CAPI_PATH)/bin/clusterctl describe cluster $(TEST_CLUSTER_NAME) 
+	@$(CAPI_PATH)/bin/clusterctl describe cluster $(TEST_CLUSTER_NAME)
 
 .create-tenant-cluster-hollow-nodes:
 	@echo "\nCreating tenant cluster hollow nodes..."
 	@kubectl apply -f $(TEST_DIR)/resources/kubemark-machine-deployment.yaml
 	@echo "\nWaiting up to 5 minutes for hollow node pods to become ready."
-	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=5m
+	@sleep 60
+	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=4m
 	@echo "\nCreated tenant cluster hollow nodes."
 
 .generate-tenant-cluster-kubeconfig:
