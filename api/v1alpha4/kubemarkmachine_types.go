@@ -115,6 +115,20 @@ type KubemarkMachineStatus struct {
 	// Conditions defines current service state of the DockerMachine.
 	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// Initialization provides observations of the KubemarkMachine initialization process.
+	// NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate initial Machine provisioning.
+	// +optional
+	Initialization KubemarkMachineInitializationStatus `json:"initialization,omitempty,omitzero"`
+}
+
+// KubemarkMachineInitializationStatus provides observations of the KubemarkMachine initialization process.
+// +kubebuild:validation:MinProperties=1
+type KubemarkMachineInitializationStatus struct {
+	// provisioned is true when the infrastructure provider reports that the Machine's infrastructure is fully provisioned.
+	// NOTE: This field is part of the Cluster API contract and is used to orchestrate initial Machine provisioning.
+	// +optional
+	Provisioned *bool `json:"provisioned,omitempty"`
 }
 
 // +kubebuilder:subresource:status
