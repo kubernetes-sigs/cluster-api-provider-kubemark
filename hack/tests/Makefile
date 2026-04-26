@@ -29,7 +29,7 @@ TEST_CLUSTER_NAME := km-cp
 	@$(TEST_DIR)/utils/kind-with-registry.sh
 
 .create-docker-network:
-	@docker network create kind
+	@if docker network inspect kind &> /dev/null; then echo "docker kind network exists"; else docker network create kind; fi
 
 .delete-kind-clusters:
 	@kind delete cluster --name $(TEST_CLUSTER_NAME)
