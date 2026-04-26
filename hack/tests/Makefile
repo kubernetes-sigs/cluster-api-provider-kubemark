@@ -155,13 +155,13 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 	@echo "\nCreated tenant cluster control plane:"
 	@$(CAPI_PATH)/bin/clusterctl describe cluster km-cp
 
-.create-tenant-cluster-hollow-nodes: 
+.create-tenant-cluster-hollow-nodes:
 	@echo "\nCreating tenant cluster hollow nodes..."
 	@kubectl apply -f $(TEST_DIR)/resources/kubemark-machine-deployment.yaml
-	@sleep 30
-	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=3m
-	@echo "Created tenant cluster hollow nodes."
-	
+	@echo "\nWaiting up to 5 minutes for hollow node pods to become ready."
+	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=5m
+	@echo "\nCreated tenant cluster hollow nodes."
+
 .generate-tenant-cluster-kubeconfig:
 	@echo "\nGenerating tenant cluster kubeconfig..."
 	@$(CAPI_PATH)/bin/clusterctl get kubeconfig km-cp > /tmp/km.kubeconfig
