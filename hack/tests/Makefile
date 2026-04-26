@@ -25,11 +25,16 @@ XDG_CONFIG_HOME ?= $(HOME)/.config
 TEST_CLUSTER_NAME := km-cp
 
 .start-kind-cluster:
-	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
+	@echo "starting kind management cluster"
+	@$(TEST_DIR)/utils/kind-with-registry.sh
+
+.create-docker-network:
+	@docker network create kind
 
 .delete-kind-clusters:
 	@kind delete cluster --name $(TEST_CLUSTER_NAME)
 	@kind delete cluster
+	@sleep 20
 
 .install-cert-manager:
 	@docker pull $(CERT_MANAGER_IMAGE_REPOSITORY)/$(CERT_MANAGER_CAINJECTOR):$(CERT_MANAGER_VERSION)
@@ -181,7 +186,9 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 	@echo "\nFor CNI, you may apply calico with 'kubectl --kubeconfig /tmp/km.kubeconfig apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml'"
 
 .PHONY: test-e2e
-test-e2e:	.start-kind-cluster \
+test-e2e:	.delete-kind-clusters \
+		.create-docker-network \
+		.start-kind-cluster \
 	 	.install-cert-manager \
 		.capi-build-clusterctl \
 		.generate-clusterctl-config \
