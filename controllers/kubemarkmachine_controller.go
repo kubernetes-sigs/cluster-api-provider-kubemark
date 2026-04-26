@@ -43,7 +43,7 @@ import (
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/utils/ptr"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1" //nolint:staticcheck
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util"
@@ -450,9 +450,8 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	kubemarkMachine.Status.Ready = true
 	kubemarkMachine.Status.Initialization.Provisioned = ptr.To(true)
 	readyCond := clusterv1beta1.Condition{
-		Type:               clusterv1beta1.ReadyCondition,
-		Status:             corev1.ConditionTrue,
-		LastTransitionTime: metav1.Time{time.Now().UTC()},
+		Type:   clusterv1beta1.ReadyCondition,
+		Status: corev1.ConditionTrue,
 	}
 	kubemarkMachine.SetConditions(clusterv1beta1.Conditions{readyCond})
 
