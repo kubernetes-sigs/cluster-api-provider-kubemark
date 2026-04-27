@@ -450,8 +450,9 @@ func (r *KubemarkMachineReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	kubemarkMachine.Status.Ready = true
 	kubemarkMachine.Status.Initialization.Provisioned = ptr.To(true)
 	readyCond := clusterv1beta1.Condition{
-		Type:   clusterv1beta1.ReadyCondition,
-		Status: corev1.ConditionTrue,
+		Type:               clusterv1beta1.ReadyCondition,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC()),
 	}
 	kubemarkMachine.SetConditions(clusterv1beta1.Conditions{readyCond})
 
