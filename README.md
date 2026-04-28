@@ -36,14 +36,14 @@ pretend to run pods scheduled to them. For more information on Kubemark, the
 
 | Dependency  | Version |
 |:------------|:-------:|
-| kubernetes  |  v1.32  |
-| cluster-api |  v1.10  |
+| kubernetes  |  v1.33  |
+| cluster-api |  v1.11  |
 
 ## Getting started
 
 **Prerequisites**
-* Ubuntu Server 22.04
-* clusterctl v1.1.4
+* Ubuntu Server 24.04
+* clusterctl v1.11
 
 At this point the Kubemark provider is extremely alpha. To deploy the Kubemark
 provider, you can add the latest release to your clusterctl config file, by
@@ -52,7 +52,7 @@ default located at `~/.cluster-api/clusterctl.yaml`.
 ```yaml
 providers:
 - name: "kubemark"
-  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.6.0/infrastructure-components.yaml"
+  url: "https://github.com/kubernetes-sigs/cluster-api-provider-kubemark/releases/v0.10.1/infrastructure-components.yaml"
   type: "InfrastructureProvider"
 ```
 
@@ -73,10 +73,10 @@ flavor to get a hybrid CAPD/CAPK cluster:
 ```bash
 export SERVICE_CIDR=["172.17.0.0/16"]
 export POD_CIDR=["192.168.122.0/24"]
-clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.32.8 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.33.4 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
-*Note: these CIDR values are specific to Ubuntu Server 22.04*
+*Note: these CIDR values are specific to Ubuntu Server 24.04*
 
 You should see your cluster come up and quickly become available with 4 Kubemark machines connected to your CAPD control plane.
 
@@ -87,8 +87,8 @@ for more information.
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.32.2 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.32.2 --worker-machine-count=4        | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.33.4 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.33.4 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
@@ -140,7 +140,7 @@ To run this pipeline docker, kind, python must be installed.
 You can run the E2E test with the following steps:
 
 ```bash
-export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.32.8
+export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.33.4
 export CAPI_PATH=<path to cluster-api repository>
 export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
 cd $(ROOT_DIR)
