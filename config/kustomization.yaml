@@ -1,3 +1,6 @@
-bases:
 # - webhook # Disable this if you're not using the webhook functionality.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
 - default

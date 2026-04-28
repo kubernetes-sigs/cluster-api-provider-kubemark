@@ -20,11 +20,21 @@ CERT_MANAGER_CONTROLLER ?= cert-manager-controller
 CERT_MANAGER_WEBHOOK ?= cert-manager-webhook
 CERT_MANAGER_VERSION ?= v1.12.2
 DEV_REGISTRY ?= localhost:5000
-CAPI_VERSION := v1.10.99
+CAPI_VERSION := v1.11.99
 XDG_CONFIG_HOME ?= $(HOME)/.config
+TEST_CLUSTER_NAME := km-cp
 
 .start-kind-cluster:
-	@kind delete cluster; sleep 20; docker network create kind; $(TEST_DIR)/utils/kind-with-registry.sh
+	@echo "starting kind management cluster"
+	@$(TEST_DIR)/utils/kind-with-registry.sh
+
+.create-docker-network:
+	@if docker network create kind &> /dev/null; then echo "docker kind network exists"; else echo "docker kind network created"; fi
+
+.delete-kind-clusters:
+	@kind delete cluster --name $(TEST_CLUSTER_NAME)
+	@kind delete cluster
+	@sleep 20
 
 .install-cert-manager:
 	@docker pull $(CERT_MANAGER_IMAGE_REPOSITORY)/$(CERT_MANAGER_CAINJECTOR):$(CERT_MANAGER_VERSION)
@@ -151,21 +161,22 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 .create-tenant-cluster-control-plane:
 	@echo "\nCreating tenant cluster control plane..."
 	@kubectl apply -f $(TEST_DIR)/resources/docker-control-plane.yaml
-	@kubectl wait cluster km-cp --for=condition=Ready=true --timeout=3m
+	@kubectl wait cluster $(TEST_CLUSTER_NAME) --for=condition=InfrastructureReady=true --timeout=3m
 	@echo "\nCreated tenant cluster control plane:"
-	@$(CAPI_PATH)/bin/clusterctl describe cluster km-cp
+	@$(CAPI_PATH)/bin/clusterctl describe cluster $(TEST_CLUSTER_NAME)
 
-.create-tenant-cluster-hollow-nodes: 
+.create-tenant-cluster-hollow-nodes:
 	@echo "\nCreating tenant cluster hollow nodes..."
 	@kubectl apply -f $(TEST_DIR)/resources/kubemark-machine-deployment.yaml
-	@sleep 30
-	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=1m
-	@echo "Created tenant cluster hollow nodes."
-	
+	@echo "\nWaiting up to 5 minutes for hollow node pods to become ready."
+	@sleep 45
+	@kubectl wait pods -l app=hollow-node --for condition=Ready --timeout=4m
+	@echo "\nCreated tenant cluster hollow nodes."
+
 .generate-tenant-cluster-kubeconfig:
 	@echo "\nGenerating tenant cluster kubeconfig..."
-	@$(CAPI_PATH)/bin/clusterctl get kubeconfig km-cp > /tmp/km.kubeconfig
-	@sed -i -e "s/server:.*/server: https:\/\/$$(docker port km-cp-lb 6443/tcp | sed "s/0.0.0.0/localhost/")/g" /tmp/km.kubeconfig
+	@$(CAPI_PATH)/bin/clusterctl get kubeconfig $(TEST_CLUSTER_NAME) > /tmp/km.kubeconfig
+	@sed -i -e "s/server:.*/server: https:\/\/$$(docker port $(TEST_CLUSTER_NAME)-lb 6443/tcp | sed "s/0.0.0.0/localhost/")/g" /tmp/km.kubeconfig
 	@sed -i -e "s/certificate-authority-data:.*/insecure-skip-tls-verify: true/g" /tmp/km.kubeconfig
 	@echo "\nGenerated tenant cluster kubeconfig:"
 	@cat /tmp/km.kubeconfig
@@ -176,7 +187,9 @@ $(CLUSTERCTL_BIN): .ensure-capi-path
 	@echo "\nFor CNI, you may apply calico with 'kubectl --kubeconfig /tmp/km.kubeconfig apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml'"
 
 .PHONY: test-e2e
-test-e2e:	.start-kind-cluster \
+test-e2e:	.delete-kind-clusters \
+		.create-docker-network \
+		.start-kind-cluster \
 	 	.install-cert-manager \
 		.capi-build-clusterctl \
 		.generate-clusterctl-config \
@@ -184,6 +197,19 @@ test-e2e:	.start-kind-cluster \
 		.docker-build \
 		.create-local-repository \
 		.config-local-repository \
+		.deploy-cluster-api \
+		.create-tenant-cluster-control-plane \
+		.create-tenant-cluster-hollow-nodes \
+		.generate-tenant-cluster-kubeconfig \
+		.tenant-cluster-info
+
+.PHONY: teardown
+teardown: .delete-kind-clusters
+
+.PHONY: redeploy
+redeploy: .delete-kind-clusters \
+		.start-kind-cluster \
+		.install-cert-manager \
 		.deploy-cluster-api \
 		.create-tenant-cluster-control-plane \
 		.create-tenant-cluster-hollow-nodes \

@@ -1,6 +1,7 @@
 version: "2"
 run:
-  go: "1.23"
+  timeout: 10m
+  go: "1.24"
   build-tags:
     - tools
   allow-parallel-runners: true

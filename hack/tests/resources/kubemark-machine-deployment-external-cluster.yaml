@@ -1,4 +1,4 @@
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineDeployment
 metadata:
   annotations:
@@ -21,7 +21,7 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: KubeadmConfigTemplate
           name: km-wl-kubemark-external-md-0
       clusterName: km-cp
@@ -29,7 +29,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
         kind: KubemarkMachineTemplate
         name: km-wl-kubemark-external-md-0
-      version: 1.32.8
+      version: 1.33.4
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 kind: KubemarkMachineTemplate
@@ -52,7 +52,7 @@ spec:
         name: kubemark-cluster-kubeconfig
         namespace: capk-system
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
   name: km-wl-kubemark-external-md-0
@@ -62,5 +62,4 @@ spec:
     spec:
       joinConfiguration:
         nodeRegistration:
-          name: ''
-
+          name: '{{ ds.meta_data.local_hostname }}'

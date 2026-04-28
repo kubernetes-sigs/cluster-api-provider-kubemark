@@ -251,6 +251,17 @@ spec:
                   - type
                   type: object
                 type: array
+              initialization:
+                description: |-
+                  Initialization provides observations of the KubemarkMachine initialization process.
+                  NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate initial Machine provisioning.
+                properties:
+                  provisioned:
+                    description: |-
+                      provisioned is true when the infrastructure provider reports that the Machine's infrastructure is fully provisioned.
+                      NOTE: This field is part of the Cluster API contract and is used to orchestrate initial Machine provisioning.
+                    type: boolean
+                type: object
               ready:
                 description: Ready is true when the provider resource is ready.
                 type: boolean
