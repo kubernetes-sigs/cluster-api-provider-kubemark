@@ -36,14 +36,14 @@ pretend to run pods scheduled to them. For more information on Kubemark, the
 
 | Dependency  | Version |
 |:------------|:-------:|
-| kubernetes  |  v1.33  |
-| cluster-api |  v1.11  |
+| kubernetes  |  v1.34  |
+| cluster-api |  v1.12  |
 
 ## Getting started
 
 **Prerequisites**
 * Ubuntu Server 24.04
-* clusterctl v1.11
+* clusterctl v1.12
 
 At this point the Kubemark provider is extremely alpha. To deploy the Kubemark
 provider, you can add the latest release to your clusterctl config file, by
@@ -73,7 +73,7 @@ flavor to get a hybrid CAPD/CAPK cluster:
 ```bash
 export SERVICE_CIDR=["172.17.0.0/16"]
 export POD_CIDR=["192.168.122.0/24"]
-clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.33.4 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --flavor capd --kubernetes-version 1.34.3 --control-plane-machine-count=1 --worker-machine-count=4 | kubectl apply -f-
 ```
 
 *Note: these CIDR values are specific to Ubuntu Server 24.04*
@@ -87,8 +87,8 @@ for more information.
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.33.4 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.33.4 --worker-machine-count=4        | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.34.3 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.34.3 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt
@@ -137,12 +137,11 @@ spec:
 
 To run this pipeline docker, kind, python must be installed.
 
+You must also checkout the [cluster-api repository](https://github.com/kubernetes-sigs/cluster-api).
+
 You can run the E2E test with the following steps:
 
 ```bash
-export KIND_CLUSTER_IMAGE=docker.io/kindest/node:v1.33.4
 export CAPI_PATH=<path to cluster-api repository>
-export ROOT_DIR=<path to cluster-api-provider-kubemark repository>
-cd $(ROOT_DIR)
 make test-e2e
 ```
