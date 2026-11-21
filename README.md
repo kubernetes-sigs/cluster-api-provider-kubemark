@@ -36,14 +36,14 @@ pretend to run pods scheduled to them. For more information on Kubemark, the
 
 | Dependency  | Version |
 |:------------|:-------:|
-| kubernetes  |  v1.34  |
-| cluster-api |  v1.12  |
+| kubernetes  |  v1.35  |
+| cluster-api |  v1.13  |
 
 ## Getting started
 
 **Prerequisites**
 * Ubuntu Server 24.04
-* clusterctl v1.12
+* clusterctl v1.13
 
 At this point the Kubemark provider is extremely alpha. To deploy the Kubemark
 provider, you can add the latest release to your clusterctl config file, by
@@ -87,8 +87,8 @@ for more information.
 For other providers, you can either create a custom hybrid cluster template, or deploy the control plane and worker machines separately, specifiying the same cluster name:
 
 ```bash
-clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.34.3 --control-plane-machine-count=1 | kubectl apply -f-
-clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.34.3 --worker-machine-count=4        | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure aws      --kubernetes-version 1.35.7 --control-plane-machine-count=1 | kubectl apply -f-
+clusterctl generate cluster wow --infrastructure kubemark --kubernetes-version 1.35.7 --worker-machine-count=4        | kubectl apply -f-
 ```
 
 ## Using tilt

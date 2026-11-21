@@ -64,5 +64,5 @@ spec:
         kind: DockerMachineTemplate
         name: km-cp-control-plane
   replicas: 1
-  version: v1.33.4
+  version: v1.35.5
 
